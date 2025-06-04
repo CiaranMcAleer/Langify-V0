@@ -31,12 +31,14 @@ export default function LessonPage({
   onLessonComplete,
   onGoBack,
   timerDurationSeconds,
+  isDevMode, // New prop
 }: {
   user: any
   lessonId: string
   onLessonComplete: (updatedUser: any) => void
   onGoBack: () => void
   timerDurationSeconds: number
+  isDevMode: boolean // New prop
 }) {
   const [lessonContent, setLessonContent] = useState<LessonContentItem[]>([])
   const [currentContentIndex, setCurrentContentIndex] = useState(0)
@@ -193,6 +195,7 @@ export default function LessonPage({
             onAnswerSubmit={handleAnswerSubmit}
             isLastItem={currentContentIndex === lessonContent.length - 1}
             onNextItem={handleNextItem}
+            isDevMode={isDevMode} // Pass isDevMode
           />
           {isSubmitting && <div className="mt-4 text-center text-primary">Submitting lesson...</div>}
         </CardContent>

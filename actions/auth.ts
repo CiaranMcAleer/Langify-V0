@@ -25,7 +25,18 @@ export async function login(prevState: any, formData: FormData) {
     return { success: false, message: "Invalid username or password." }
   }
 
-  return { success: true, user: { id: user.id, username: user.username, points: user.points, level: user.level } }
+  return {
+    success: true,
+    user: {
+      id: user.id,
+      username: user.username,
+      points: user.points,
+      level: user.level,
+      last_lesson_completed_at: user.last_lesson_completed_at,
+      current_streak: user.current_streak,
+      isAdmin: user.isAdmin, // Return isAdmin flag
+    },
+  }
 }
 
 export async function register(prevState: any, formData: FormData) {
@@ -50,6 +61,14 @@ export async function register(prevState: any, formData: FormData) {
 
   return {
     success: true,
-    user: { id: newUser.id, username: newUser.username, points: newUser.points, level: newUser.level },
+    user: {
+      id: newUser.id,
+      username: newUser.username,
+      points: newUser.points,
+      level: newUser.level,
+      last_lesson_completed_at: newUser.last_lesson_completed_at,
+      current_streak: newUser.current_streak,
+      isAdmin: newUser.isAdmin, // Return isAdmin flag
+    },
   }
 }

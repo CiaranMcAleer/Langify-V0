@@ -9,10 +9,11 @@ import LessonPage from "@/components/lesson/lesson-page"
 import Leaderboard from "@/components/leaderboard"
 import ProfilePage from "@/components/profile-page"
 import Image from "next/image"
-import { Moon, Sun } from "react-feather"
+import { Moon, Sun, Settings } from "react-feather" // Import Settings icon
 import { Button } from "@/components/ui/button"
-import { LanguageProvider, useLanguage } from "@/contexts/language-context" // Import LanguageProvider and useLanguage
-import Notifications from "@/components/notifications" // Import Notifications
+import { LanguageProvider, useLanguage } from "@/contexts/language-context"
+import Notifications from "@/components/notifications"
+import { Toaster } from "@/components/ui/toaster" // Import Toaster
 
 function AppContent() {
   const [currentUser, setCurrentUser] = useState<any>(null)
@@ -22,7 +23,8 @@ function AppContent() {
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null)
   const [activeLessonTimerDurationSeconds, setActiveLessonTimerDurationSeconds] = useState<number>(0) // Default to 0 (no timer)
   const [theme, setTheme] = useState<string>("default") // 'default' or 'langify-modern'
-  const { t } = useLanguage() // Use the translation hook
+  const [isDevMode, setIsDevMode] = useState(false) // New: Dev Mode state
+  const { t } = useLanguage()
 
   useEffect(() => {
     // Load theme from localStorage
@@ -37,6 +39,15 @@ function AppContent() {
     document.documentElement.className = theme === "langify-modern" ? "theme-langify-modern" : ""
     localStorage.setItem("langify-theme", theme)
   }, [theme])
+
+  useEffect(() => {
+    // Set dev mode based on admin status
+    if (currentUser?.isAdmin) {
+      setIsDevMode(true)
+    } else {
+      setIsDevMode(false)
+    }
+  }, [currentUser])
 
   const handleLoginSuccess = (user: any) => {
     setCurrentUser(user)
@@ -82,6 +93,10 @@ function AppContent() {
     setTheme((prev) => (prev === "default" ? "langify-modern" : "default"))
   }
 
+  const handleUserUpdate = (updatedUser: any) => {
+    setCurrentUser(updatedUser)
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
       <header className="fixed top-0 left-0 right-0 z-10 flex h-16 items-center justify-between px-4 md:px-6 border-b bg-card">
@@ -90,6 +105,11 @@ function AppContent() {
           <span className="text-xl font-bold">Langify</span>
         </div>
         <div className="flex items-center gap-2">
+          {isDevMode && (
+            <div className="flex items-center gap-1 text-sm font-medium text-blue-600">
+              <Settings className="h-4 w-4" /> {t("devMode")}
+            </div>
+          )}
           <button onClick={handleToggleTheme} className="p-2 rounded-full hover:bg-accent">
             {theme === "default" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             <span className="sr-only">Toggle theme</span>
@@ -115,6 +135,7 @@ function AppContent() {
             onShowLeaderboard={handleShowLeaderboard}
             onShowProfile={handleShowProfile}
             onLogout={handleLogout}
+            isDevMode={isDevMode} // Pass isDevMode
           />
         ) : currentView === "lesson" && activeLessonId ? (
           <LessonPage
@@ -122,12 +143,18 @@ function AppContent() {
             lessonId={activeLessonId}
             onLessonComplete={handleLessonComplete}
             onGoBack={handleGoBackToDashboard}
-            timerDurationSeconds={activeLessonTimerDurationSeconds} // Pass the lesson-specific timer duration
+            timerDurationSeconds={activeLessonTimerDurationSeconds}
+            isDevMode={isDevMode} // Pass isDevMode
           />
         ) : currentView === "leaderboard" ? (
           <Leaderboard onGoBack={handleGoBackToDashboard} />
         ) : currentView === "profile" ? (
-          <ProfilePage user={currentUser} onGoBack={handleGoBackToDashboard} />
+          <ProfilePage
+            user={currentUser}
+            onGoBack={handleGoBackToDashboard}
+            onUserUpdate={handleUserUpdate}
+            isDevMode={isDevMode}
+          />
         ) : (
           // Fallback to dashboard if state is inconsistent
           <Dashboard
@@ -136,10 +163,12 @@ function AppContent() {
             onShowLeaderboard={handleShowLeaderboard}
             onShowProfile={handleShowProfile}
             onLogout={handleLogout}
+            isDevMode={isDevMode} // Pass isDevMode
           />
         )}
       </div>
       <Notifications /> {/* Global notifications */}
+      <Toaster /> {/* Toaster for toast notifications */}
     </main>
   )
 }

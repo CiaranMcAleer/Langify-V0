@@ -104,6 +104,7 @@ export async function submitLessonAnswer(userId: string, lessonId: string, total
       level: updatedUser.level,
       last_lesson_completed_at: updatedUser.last_lesson_completed_at,
       current_streak: updatedUser.current_streak,
+      isAdmin: updatedUser.isAdmin,
     },
   }
 }
@@ -127,6 +128,88 @@ export async function getNotifications() {
 export async function getUiTranslations() {
   const result = await db.query("SELECT * FROM ui_translations")
   return result[0] || {} // Return the translation object
+}
+
+// DEVMODE ACTIONS
+export async function markLessonAsCompleteDev(userId: string, lessonId: string) {
+  await db.query("UPDATE user_progress SET completed = ? WHERE user_id = ? AND lesson_id = ?", [true, userId, lessonId])
+  return { success: true }
+}
+
+export async function addStreakDayDev(userId: string) {
+  const users = await db.query("SELECT * FROM users WHERE id = ?", [userId])
+  const currentUser = users[0]
+  if (currentUser) {
+    const newStreak = currentUser.current_streak + 1
+    // Set last_lesson_completed_at to now to ensure streak is maintained
+    await db.query("UPDATE users SET current_streak = ?, last_lesson_completed_at = ? WHERE id = ?", [
+      newStreak,
+      new Date().toISOString(),
+      userId,
+    ])
+    const updatedUser = (await db.query("SELECT * FROM users WHERE id = ?", [userId]))[0]
+    return {
+      success: true,
+      user: {
+        id: updatedUser.id,
+        username: updatedUser.username,
+        points: updatedUser.points,
+        level: updatedUser.level,
+        last_lesson_completed_at: updatedUser.last_lesson_completed_at,
+        current_streak: updatedUser.current_streak,
+        isAdmin: updatedUser.isAdmin,
+      },
+    }
+  }
+  return { success: false, message: "User not found." }
+}
+
+export async function updateUserStatsDev(userId: string, points: number, level: number) {
+  const newLevel = calculateLevel(points) // Recalculate level based on new points
+  await db.query("UPDATE users SET points = ?, level = ? WHERE id = ?", [points, newLevel, userId])
+  // Record history for manual update
+  await db.query("INSERT INTO user_history (user_id, timestamp, points, level) VALUES (?, ?, ?, ?)", [
+    userId,
+    new Date().toISOString(),
+    points,
+    newLevel,
+  ])
+  const updatedUser = (await db.query("SELECT * FROM users WHERE id = ?", [userId]))[0]
+  return {
+    success: true,
+    user: {
+      id: updatedUser.id,
+      username: updatedUser.username,
+      points: updatedUser.points,
+      level: updatedUser.level,
+      last_lesson_completed_at: updatedUser.last_lesson_completed_at,
+      current_streak: updatedUser.current_streak,
+      isAdmin: updatedUser.isAdmin,
+    },
+  }
+}
+
+export async function resetUserProgressDev(userId: string) {
+  await db.query("DELETE FROM user_progress WHERE user_id = ?", [userId])
+  await db.query("DELETE FROM user_history WHERE user_id = ?", [userId])
+  // Reset user's points, level, and streak
+  await db.query(
+    "UPDATE users SET points = ?, level = ?, last_lesson_completed_at = ?, current_streak = ? WHERE id = ?",
+    [0, 1, null, 0, userId],
+  )
+  const updatedUser = (await db.query("SELECT * FROM users WHERE id = ?", [userId]))[0]
+  return {
+    success: true,
+    user: {
+      id: updatedUser.id,
+      username: updatedUser.username,
+      points: updatedUser.points,
+      level: updatedUser.level,
+      last_lesson_completed_at: updatedUser.last_lesson_completed_at,
+      current_streak: updatedUser.current_streak,
+      isAdmin: updatedUser.isAdmin,
+    },
+  }
 }
 
 // Helper function for level calculation (copied from db.ts to be available in server action context)

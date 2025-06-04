@@ -3,36 +3,90 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { User, Trophy, TrendingUp, Flame } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { User, Trophy, TrendingUp, Flame, RefreshCcw } from "lucide-react"
 import { useEffect, useState } from "react"
-import { getUserHistory } from "@/actions/app"
+import { getUserHistory, addStreakDayDev, updateUserStatsDev, resetUserProgressDev } from "@/actions/app" // Import new actions
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { useLanguage } from "@/contexts/language-context"
+import { useToast } from "@/hooks/use-toast" // For notifications
 
-export default function ProfilePage({ user, onGoBack }: { user: any; onGoBack: () => void }) {
+export default function ProfilePage({
+  user,
+  onGoBack,
+  onUserUpdate, // New prop to update user in parent state
+  isDevMode, // New prop
+}: {
+  user: any
+  onGoBack: () => void
+  onUserUpdate: (updatedUser: any) => void // New prop
+  isDevMode: boolean // New prop
+}) {
   const { t } = useLanguage()
+  const { toast } = useToast()
   const [historyData, setHistoryData] = useState<any[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(true)
+  const [editPoints, setEditPoints] = useState(user.points)
+  const [editLevel, setEditLevel] = useState(user.level)
+
+  const fetchHistory = async () => {
+    setIsLoadingHistory(true)
+    const data = await getUserHistory(user.id)
+    // Format data for Recharts: parse timestamp and ensure numeric values
+    const formattedData = data.map((entry) => ({
+      ...entry,
+      timestamp: new Date(entry.timestamp).toLocaleDateString(), // Format date for display
+      points: Number(entry.points),
+      level: Number(entry.level),
+    }))
+    setHistoryData(formattedData)
+    setIsLoadingHistory(false)
+  }
 
   useEffect(() => {
-    async function fetchHistory() {
-      setIsLoadingHistory(true)
-      const data = await getUserHistory(user.id)
-      // Format data for Recharts: parse timestamp and ensure numeric values
-      const formattedData = data.map((entry) => ({
-        ...entry,
-        timestamp: new Date(entry.timestamp).toLocaleDateString(), // Format date for display
-        points: Number(entry.points),
-        level: Number(entry.level),
-      }))
-      setHistoryData(formattedData)
-      setIsLoadingHistory(false)
-    }
     fetchHistory()
-  }, [user.id])
+  }, [user.id, user.points, user.level]) // Re-fetch history if points/level change
+
+  useEffect(() => {
+    setEditPoints(user.points)
+    setEditLevel(user.level)
+  }, [user.points, user.level])
 
   const pointsToNextLevel = user.level < 10 ? user.level * 100 - user.points : 0
   const nextLevelThreshold = user.level < 10 ? user.level * 100 : null
+
+  const handleAddDayToStreak = async () => {
+    const result = await addStreakDayDev(user.id)
+    if (result.success) {
+      onUserUpdate(result.user)
+      toast({ title: t("streakUpdated") })
+    } else {
+      toast({ title: "Error", description: result.message, variant: "destructive" })
+    }
+  }
+
+  const handleUpdateStats = async () => {
+    const result = await updateUserStatsDev(user.id, Number(editPoints), Number(editLevel))
+    if (result.success) {
+      onUserUpdate(result.user)
+      toast({ title: t("pointsUpdated") })
+    } else {
+      toast({ title: "Error", description: result.message, variant: "destructive" })
+    }
+  }
+
+  const handleResetProgress = async () => {
+    if (window.confirm(t("confirmReset"))) {
+      const result = await resetUserProgressDev(user.id)
+      if (result.success) {
+        onUserUpdate(result.user)
+        toast({ title: t("progressReset") })
+      } else {
+        toast({ title: "Error", description: result.message, variant: "destructive" })
+      }
+    }
+  }
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 max-w-3xl">
@@ -106,6 +160,52 @@ export default function ProfilePage({ user, onGoBack }: { user: any; onGoBack: (
           </div>
         </CardContent>
       </Card>
+
+      {isDevMode && (
+        <Card className="mb-6 border-2 border-blue-500">
+          <CardHeader>
+            <CardTitle className="text-blue-600 flex items-center gap-2">
+              <RefreshCcw className="h-5 w-5" /> {t("devMode")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="add-streak">{t("addDayToStreak")}</Label>
+              <Button onClick={handleAddDayToStreak} className="w-full">
+                {t("addDayToStreak")}
+              </Button>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-points-level">{t("editPointsLevel")}</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  placeholder="Points"
+                  value={editPoints}
+                  onChange={(e) => setEditPoints(Number(e.target.value))}
+                  className="w-1/2"
+                />
+                <Input
+                  type="number"
+                  placeholder="Level"
+                  value={editLevel}
+                  onChange={(e) => setEditLevel(Number(e.target.value))}
+                  className="w-1/2"
+                />
+              </div>
+              <Button onClick={handleUpdateStats} className="w-full">
+                {t("saveChanges")}
+              </Button>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="reset-progress">{t("resetProgress")}</Label>
+              <Button onClick={handleResetProgress} variant="destructive" className="w-full">
+                {t("resetProgress")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

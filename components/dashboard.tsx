@@ -5,11 +5,12 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { getLanguages, getLessons, getUserProgress } from "@/actions/app"
+import { getLanguages, getLessons, getUserProgress, markLessonAsCompleteDev } from "@/actions/app" // Import new action
 import { Trophy, BookOpen, User, CheckCircle, Flame } from "lucide-react"
 import Image from "next/image"
 import ThemeSwitcher from "@/components/theme-switcher"
 import { useLanguage } from "@/contexts/language-context"
+import { useToast } from "@/hooks/use-toast" // For notifications
 
 export default function Dashboard({
   user,
@@ -17,38 +18,53 @@ export default function Dashboard({
   onShowLeaderboard,
   onShowProfile,
   onLogout,
+  isDevMode, // New prop
 }: {
   user: any
   onStartLesson: (lessonId: string, timerDurationSeconds: number) => void
   onShowLeaderboard: () => void
   onShowProfile: () => void
   onLogout: () => void
+  isDevMode: boolean // New prop
 }) {
   const [languages, setLanguages] = useState<any[]>([])
   const [selectedLanguage, setSelectedLanguage] = useState("lang-1") // Default to Italian
   const [lessons, setLessons] = useState<any[]>([])
   const [userLessonProgress, setUserLessonProgress] = useState<any>({}) // { lessonId: { completed: boolean, score: number } }
   const { t, currentLanguage, setLanguage, availableLanguages } = useLanguage()
+  const { toast } = useToast()
+
+  const fetchDashboardData = async () => {
+    const fetchedLanguages = await getLanguages()
+    setLanguages(fetchedLanguages)
+    const fetchedLessons = await getLessons(selectedLanguage)
+    setLessons(fetchedLessons)
+
+    const progress = await getUserProgress(user.id, selectedLanguage)
+    const progressMap = progress.reduce((acc: any, item: any) => {
+      acc[item.lesson_id] = { completed: item.completed, score: item.score }
+      return acc
+    }, {})
+    setUserLessonProgress(progressMap)
+  }
 
   useEffect(() => {
-    async function fetchData() {
-      const fetchedLanguages = await getLanguages()
-      setLanguages(fetchedLanguages)
-      const fetchedLessons = await getLessons(selectedLanguage)
-      setLessons(fetchedLessons)
-
-      const progress = await getUserProgress(user.id, selectedLanguage)
-      const progressMap = progress.reduce((acc: any, item: any) => {
-        acc[item.lesson_id] = { completed: item.completed, score: item.score }
-        return acc
-      }, {})
-      setUserLessonProgress(progressMap)
-    }
-    fetchData()
+    fetchDashboardData()
   }, [selectedLanguage, user.id])
 
   const handleLanguageChange = async (langId: string) => {
     setSelectedLanguage(langId)
+  }
+
+  const handleMarkLessonComplete = async (lessonId: string) => {
+    if (!isDevMode) return
+    await markLessonAsCompleteDev(user.id, lessonId)
+    toast({
+      title: "Lesson Marked Complete",
+      description: `Lesson ${lessonId} marked as complete for ${user.username}.`,
+    })
+    // Re-fetch data to update UI
+    await fetchDashboardData()
   }
 
   const today = new Date()
@@ -183,11 +199,7 @@ export default function Dashboard({
           const progress = userLessonProgress[lesson.id]
           const isCompleted = progress?.completed
           return (
-            <Card
-              key={lesson.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => onStartLesson(lesson.id, lesson.timer_duration_seconds)}
-            >
+            <Card key={lesson.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -198,10 +210,24 @@ export default function Dashboard({
                 </CardTitle>
                 <CardDescription>{lesson.description}</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button className="w-full" disabled={isCompleted}>
+              <CardContent className="flex flex-col gap-2">
+                <Button
+                  className="w-full"
+                  disabled={isCompleted}
+                  onClick={() => onStartLesson(lesson.id, lesson.timer_duration_seconds)}
+                >
                   {isCompleted ? t("completed") : t("startLesson")}
                 </Button>
+                {isDevMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleMarkLessonComplete(lesson.id)}
+                    disabled={isCompleted}
+                  >
+                    {t("markLessonComplete")}
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )

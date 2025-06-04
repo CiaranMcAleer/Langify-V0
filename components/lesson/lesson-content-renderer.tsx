@@ -44,11 +44,13 @@ export default function LessonContentRenderer({
   onAnswerSubmit,
   isLastItem,
   onNextItem,
+  isDevMode, // New prop
 }: {
   content: LessonContentItem
   onAnswerSubmit: (isCorrect: boolean) => void
   isLastItem: boolean
   onNextItem: () => void
+  isDevMode: boolean // New prop
 }) {
   const [selectedAnswer, setSelectedAnswer] = useState<string>("")
   const [fillInBlankAnswer, setFillInBlankAnswer] = useState<string>("")
@@ -66,7 +68,13 @@ export default function LessonContentRenderer({
       audioRef.current.pause()
       audioRef.current.load() // Reload audio when content changes
     }
-  }, [content])
+
+    // Devmode: Pre-populate fill-in-blank
+    if (isDevMode && content.type === "fill_in_blank") {
+      const fibData = content.data as FillInBlankData
+      setFillInBlankAnswer(fibData.correct_answer)
+    }
+  }, [content, isDevMode])
 
   const handleSubmit = () => {
     let isCorrect = false
@@ -112,6 +120,7 @@ export default function LessonContentRenderer({
                   feedback === "correct" && selectedAnswer === option && "border-green-500 bg-green-50",
                   feedback === "incorrect" && selectedAnswer === option && "border-red-500 bg-red-50",
                   feedback === "incorrect" && option === mcData.correct_answer && "border-green-500 bg-green-50",
+                  isDevMode && option === mcData.correct_answer && "border-blue-500 ring-2 ring-blue-500", // Devmode highlight
                 )}
                 onClick={() => !feedback && setSelectedAnswer(option)}
               >
@@ -140,6 +149,7 @@ export default function LessonContentRenderer({
                 "inline-block w-auto min-w-[100px] max-w-[200px] text-center",
                 feedback === "correct" && "border-green-500 bg-green-50",
                 feedback === "incorrect" && "border-red-500 bg-red-50",
+                isDevMode && "border-blue-500 ring-2 ring-blue-500", // Devmode highlight
               )}
               disabled={feedback !== null}
               aria-label="Fill in the blank"
@@ -155,7 +165,7 @@ export default function LessonContentRenderer({
         <div className="grid gap-4">
           <h3 className="text-xl font-semibold">{audioMcData.question}</h3>
           <div className="flex justify-center">
-            <audio ref={audioRef} src={audioMcData.audio_url} preload="auto" />
+            <audio ref={audioRef} src={audioMcData.audio_url} preload="auto" crossOrigin="anonymous" />
             <Button onClick={handlePlayAudio} size="lg" className="text-lg">
               <Volume2 className="mr-2 h-6 w-6" /> Play Audio
             </Button>
@@ -175,6 +185,7 @@ export default function LessonContentRenderer({
                   feedback === "correct" && selectedAnswer === option && "border-green-500 bg-green-50",
                   feedback === "incorrect" && selectedAnswer === option && "border-red-500 bg-red-50",
                   feedback === "incorrect" && option === audioMcData.correct_answer && "border-green-500 bg-green-50",
+                  isDevMode && option === audioMcData.correct_answer && "border-blue-500 ring-2 ring-blue-500", // Devmode highlight
                 )}
                 onClick={() => !feedback && setSelectedAnswer(option)}
               >

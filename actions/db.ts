@@ -10,6 +10,7 @@ let users: {
   level: number
   last_lesson_completed_at: string | null // New: for streak
   current_streak: number // New: for streak
+  isAdmin: boolean // New: for admin devmode
 }[] = []
 let languages: { id: string; name: string; code: string; flag_url: string }[] = []
 let lessons: {
@@ -101,6 +102,20 @@ const uiTranslations: { [key: string]: { [key: string]: string } } = {
     infoNotification: "Info Notification",
     warningNotification: "Warning Notification",
     dismiss: "Dismiss",
+    pointsAndLevelHistory: "Points and Level History",
+    noHistory: "No history data available.",
+    toReachLevel: "to reach Level",
+    at: "at",
+    devMode: "Dev Mode",
+    markLessonComplete: "Mark Lesson Complete",
+    addDayToStreak: "Add Day to Streak",
+    editPointsLevel: "Edit Points/Level",
+    saveChanges: "Save Changes",
+    resetProgress: "Reset Progress",
+    confirmReset: "Are you sure you want to reset all your progress?",
+    progressReset: "Progress reset successfully!",
+    pointsUpdated: "Points and level updated!",
+    streakUpdated: "Streak updated!",
   },
   it: {
     welcome: "Benvenuto, {username}!",
@@ -166,6 +181,20 @@ const uiTranslations: { [key: string]: { [key: string]: string } } = {
     infoNotification: "Notifica Informativa",
     warningNotification: "Notifica di Avviso",
     dismiss: "Ignora",
+    pointsAndLevelHistory: "Cronologia Punti e Livello",
+    noHistory: "Nessun dato storico disponibile.",
+    toReachLevel: "per raggiungere il Livello",
+    at: "a",
+    devMode: "Modalità Sviluppatore",
+    markLessonComplete: "Segna Lezione Completata",
+    addDayToStreak: "Aggiungi Giorno alla Serie",
+    editPointsLevel: "Modifica Punti/Livello",
+    saveChanges: "Salva Modifiche",
+    resetProgress: "Reimposta Progresso",
+    confirmReset: "Sei sicuro di voler reimpostare tutti i tuoi progressi?",
+    progressReset: "Progresso reimpostato con successo!",
+    pointsUpdated: "Punti e livello aggiornati!",
+    streakUpdated: "Serie aggiornata!",
   },
 }
 
@@ -199,6 +228,7 @@ async function seedDatabase() {
   const hashedPassword4 = await bcrypt.hash("dianapass", 10)
   const hashedPassword5 = await bcrypt.hash("evapass", 10)
   const hashedPassword6 = await bcrypt.hash("frankpass", 10)
+  const hashedPasswordAdmin = await bcrypt.hash("admin", 10) // Admin password
 
   users = [
     {
@@ -209,6 +239,7 @@ async function seedDatabase() {
       level: calculateLevel(180),
       last_lesson_completed_at: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(), // Completed yesterday, streak active
       current_streak: 3,
+      isAdmin: false,
     },
     {
       id: "user-2",
@@ -218,6 +249,7 @@ async function seedDatabase() {
       level: calculateLevel(350),
       last_lesson_completed_at: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(), // Completed 2 days ago, streak lost
       current_streak: 5,
+      isAdmin: false,
     },
     {
       id: "user-3",
@@ -227,6 +259,7 @@ async function seedDatabase() {
       level: calculateLevel(70),
       last_lesson_completed_at: null, // No recent lesson, no streak
       current_streak: 0,
+      isAdmin: false,
     },
     {
       id: "user-4",
@@ -236,6 +269,7 @@ async function seedDatabase() {
       level: calculateLevel(520),
       last_lesson_completed_at: new Date().toISOString(), // Completed today, streak active
       current_streak: 7,
+      isAdmin: false,
     },
     {
       id: "user-5",
@@ -245,6 +279,7 @@ async function seedDatabase() {
       level: calculateLevel(810),
       last_lesson_completed_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // Old completion, streak lost
       current_streak: 10,
+      isAdmin: false,
     },
     {
       id: "user-6",
@@ -254,6 +289,17 @@ async function seedDatabase() {
       level: calculateLevel(950),
       last_lesson_completed_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // Completed recently, streak active
       current_streak: 1,
+      isAdmin: false,
+    },
+    {
+      id: "user-admin",
+      username: "admin",
+      password_hash: hashedPasswordAdmin,
+      points: 0,
+      level: 1,
+      last_lesson_completed_at: null,
+      current_streak: 0,
+      isAdmin: true, // Admin user
     },
   ]
 
@@ -609,6 +655,22 @@ export const db = {
       }
       return []
     }
+    if (sql.startsWith("UPDATE users SET current_streak = ?, last_lesson_completed_at = ? WHERE id = ?")) {
+      const userIndex = users.findIndex((u) => u.id === params[2])
+      if (userIndex !== -1) {
+        users[userIndex].current_streak = params[0]
+        users[userIndex].last_lesson_completed_at = params[1]
+      }
+      return []
+    }
+    if (sql.startsWith("UPDATE users SET points = ?, level = ? WHERE id = ?")) {
+      const userIndex = users.findIndex((u) => u.id === params[2])
+      if (userIndex !== -1) {
+        users[userIndex].points = params[0]
+        users[userIndex].level = params[1]
+      }
+      return []
+    }
     if (sql.startsWith("INSERT INTO users")) {
       const newUser = {
         id: `user-${users.length + 1}`,
@@ -618,6 +680,7 @@ export const db = {
         level: 1,
         last_lesson_completed_at: null,
         current_streak: 0,
+        isAdmin: false, // New users are not admins by default
       }
       users.push(newUser)
       return [newUser]
@@ -654,6 +717,16 @@ export const db = {
       }
       return []
     }
+    if (sql.startsWith("UPDATE user_progress SET completed = ? WHERE user_id = ? AND lesson_id = ?")) {
+      const progressIndex = userProgress.findIndex((p) => p.user_id === params[1] && p.lesson_id === params[2])
+      if (progressIndex !== -1) {
+        userProgress[progressIndex].completed = params[0]
+      } else {
+        // If progress doesn't exist, create it as completed with 0 score
+        userProgress.push({ user_id: params[1], lesson_id: params[2], completed: params[0], score: 0 })
+      }
+      return []
+    }
     if (sql.startsWith("SELECT * FROM user_progress")) {
       if (sql.includes("WHERE user_id = ? AND language_id = ?")) {
         const userId = params[0]
@@ -675,6 +748,14 @@ export const db = {
       return userHistory
         .filter((h) => h.user_id === params[0])
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    }
+    if (sql.startsWith("DELETE FROM user_progress WHERE user_id = ?")) {
+      userProgress = userProgress.filter((p) => p.user_id !== params[0])
+      return []
+    }
+    if (sql.startsWith("DELETE FROM user_history WHERE user_id = ?")) {
+      userHistory = userHistory.filter((h) => h.user_id !== params[0])
+      return []
     }
     if (sql.startsWith("SELECT * FROM notifications")) {
       return notifications.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
