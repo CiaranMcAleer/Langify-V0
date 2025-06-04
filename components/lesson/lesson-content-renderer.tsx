@@ -1,0 +1,152 @@
+// components/lesson/lesson-content-renderer.tsx
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { cn } from "@/lib/utils"
+
+interface MultipleChoiceData {
+  question: string
+  options: string[]
+  correct_answer: string
+}
+
+interface FillInBlankData {
+  sentence_before: string
+  blank_placeholder: string
+  sentence_after: string
+  correct_answer: string
+}
+
+interface LessonContentItem {
+  id: string
+  type: "multiple_choice" | "fill_in_blank"
+  data: MultipleChoiceData | FillInBlankData
+}
+
+export default function LessonContentRenderer({
+  content,
+  onAnswerSubmit,
+  isLastItem,
+  onNextItem,
+}: {
+  content: LessonContentItem
+  onAnswerSubmit: (isCorrect: boolean) => void
+  isLastItem: boolean
+  onNextItem: () => void
+}) {
+  const [selectedAnswer, setSelectedAnswer] = useState<string>("")
+  const [fillInBlankAnswer, setFillInBlankAnswer] = useState<string>("")
+  const [feedback, setFeedback] = useState<"correct" | "incorrect" | null>(null)
+  const [showNextButton, setShowNextButton] = useState(false)
+
+  useEffect(() => {
+    setSelectedAnswer("")
+    setFillInBlankAnswer("")
+    setFeedback(null)
+    setShowNextButton(false)
+  }, [content])
+
+  const handleSubmit = () => {
+    let isCorrect = false
+    if (content.type === "multiple_choice") {
+      const mcData = content.data as MultipleChoiceData
+      isCorrect = selectedAnswer === mcData.correct_answer
+    } else if (content.type === "fill_in_blank") {
+      const fibData = content.data as FillInBlankData
+      isCorrect = fillInBlankAnswer.trim().toLowerCase() === fibData.correct_answer.toLowerCase()
+    }
+    setFeedback(isCorrect ? "correct" : "incorrect")
+    onAnswerSubmit(isCorrect)
+    setShowNextButton(true)
+  }
+
+  const renderContent = () => {
+    if (content.type === "multiple_choice") {
+      const mcData = content.data as MultipleChoiceData
+      return (
+        <div className="grid gap-4">
+          <h3 className="text-xl font-semibold">{mcData.question}</h3>
+          <RadioGroup
+            value={selectedAnswer}
+            onValueChange={setSelectedAnswer}
+            className="grid gap-2"
+            disabled={feedback !== null}
+          >
+            {mcData.options.map((option, index) => (
+              <div
+                key={index}
+                className={cn(
+                  "flex items-center rounded-lg border p-4 cursor-pointer transition-colors duration-200",
+                  selectedAnswer === option && "bg-accent",
+                  feedback === "correct" && selectedAnswer === option && "border-green-500 bg-green-50",
+                  feedback === "incorrect" && selectedAnswer === option && "border-red-500 bg-red-50",
+                  feedback === "incorrect" && option === mcData.correct_answer && "border-green-500 bg-green-50",
+                )}
+                onClick={() => !feedback && setSelectedAnswer(option)}
+              >
+                <RadioGroupItem value={option} id={`option-${index}`} className="sr-only" />
+                <Label htmlFor={`option-${index}`} className="w-full cursor-pointer text-lg font-medium">
+                  {option}
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
+      )
+    } else if (content.type === "fill_in_blank") {
+      const fibData = content.data as FillInBlankData
+      return (
+        <div className="grid gap-4">
+          <h3 className="text-xl font-semibold">Complete the sentence:</h3>
+          <div className="flex flex-wrap items-center gap-1 text-lg">
+            <span>{fibData.sentence_before}</span>
+            <Input
+              type="text"
+              placeholder={fibData.blank_placeholder}
+              value={fillInBlankAnswer}
+              onChange={(e) => setFillInBlankAnswer(e.target.value)}
+              className={cn(
+                "inline-block w-auto min-w-[100px] max-w-[200px] text-center",
+                feedback === "correct" && "border-green-500 bg-green-50",
+                feedback === "incorrect" && "border-red-500 bg-red-50",
+              )}
+              disabled={feedback !== null}
+              aria-label="Fill in the blank"
+            />
+            <span>{fibData.sentence_after}</span>
+          </div>
+          {feedback === "incorrect" && <p className="text-sm text-red-500">Correct answer: {fibData.correct_answer}</p>}
+        </div>
+      )
+    }
+    return <p>Unknown content type.</p>
+  }
+
+  return (
+    <div className="grid gap-6">
+      {renderContent()}
+      {feedback && (
+        <p className={cn("text-center font-semibold", feedback === "correct" ? "text-green-600" : "text-red-600")}>
+          {feedback === "correct" ? "Correct!" : "Incorrect."}
+        </p>
+      )}
+      {!showNextButton && (
+        <Button
+          onClick={handleSubmit}
+          disabled={
+            (content.type === "multiple_choice" && !selectedAnswer) ||
+            (content.type === "fill_in_blank" && !fillInBlankAnswer.trim()) ||
+            feedback !== null
+          }
+        >
+          Check Answer
+        </Button>
+      )}
+      {showNextButton && <Button onClick={onNextItem}>{isLastItem ? "Finish Lesson" : "Next"}</Button>}
+    </div>
+  )
+}
