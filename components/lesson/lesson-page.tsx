@@ -2,24 +2,56 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { getLessonContent, submitLessonAnswer } from "@/actions/app"
 import LessonContentRenderer from "./lesson-content-renderer"
+import { Timer } from "lucide-react"
+import { useLanguage } from "@/contexts/language-context"
+
+interface LessonContentItem {
+  id: string
+  type: "multiple_choice" | "fill_in_blank" | "audio_multiple_choice_translation" | "audio_multiple_choice_text"
+  data: {
+    question?: string
+    options?: string[]
+    correct_answer: string
+    sentence_before?: string
+    blank_placeholder?: string
+    sentence_after?: string
+    points_awarded: number
+    audio_url?: string
+  }
+}
 
 export default function LessonPage({
   user,
   lessonId,
   onLessonComplete,
   onGoBack,
-}: { user: any; lessonId: string; onLessonComplete: (updatedUser: any) => void; onGoBack: () => void }) {
-  const [lessonContent, setLessonContent] = useState<any[]>([])
+  timerDurationSeconds,
+  isDevMode, // New prop
+}: {
+  user: any
+  lessonId: string
+  onLessonComplete: (updatedUser: any) => void
+  onGoBack: () => void
+  timerDurationSeconds: number
+  isDevMode: boolean // New prop
+}) {
+  const [lessonContent, setLessonContent] = useState<LessonContentItem[]>([])
   const [currentContentIndex, setCurrentContentIndex] = useState(0)
-  const [lessonScore, setLessonScore] = useState(0)
+  const [correctAnswersCount, setCorrectAnswersCount] = useState(0)
+  const [totalQuestionPoints, setTotalQuestionPoints] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [timeLeft, setTimeLeft] = useState<number | null>(null) // Time in seconds
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const startTimeRef = useRef<number | null>(null)
+  const { t } = useLanguage()
+
+  const MAX_BONUS_POINTS = 100 // Max bonus points for completing fast
 
   useEffect(() => {
     async function fetchContent() {
@@ -27,13 +59,85 @@ export default function LessonPage({
       const content = await getLessonContent(lessonId)
       setLessonContent(content)
       setIsLoading(false)
+      setCorrectAnswersCount(0)
+      setTotalQuestionPoints(0)
+
+      if (timerDurationSeconds > 0) {
+        setTimeLeft(timerDurationSeconds)
+        startTimeRef.current = Date.now()
+      } else {
+        setTimeLeft(null)
+        startTimeRef.current = null
+      }
     }
     fetchContent()
-  }, [lessonId])
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+    }
+  }, [lessonId, timerDurationSeconds])
+
+  useEffect(() => {
+    // Only run timer if timerDurationSeconds is positive and timeLeft is not null
+    if (timerDurationSeconds > 0 && timeLeft !== null && timeLeft > 0 && !isLoading && !isSubmitting) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft((prev) => (prev !== null ? prev - 1 : null))
+      }, 1000)
+    } else if (timeLeft === 0 && !isSubmitting) {
+      // Time's up, automatically finish lesson
+      handleFinishLesson()
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+    }
+  }, [timeLeft, timerDurationSeconds, isLoading, isSubmitting])
 
   const handleAnswerSubmit = (isCorrect: boolean) => {
     if (isCorrect) {
-      setLessonScore((prev) => prev + 10) // Award 10 points per correct answer
+      setCorrectAnswersCount((prev) => prev + 1)
+      const currentItemPoints = lessonContent[currentContentIndex]?.data?.points_awarded || 0
+      setTotalQuestionPoints((prev) => prev + currentItemPoints)
+    }
+  }
+
+  const calculateBonusPoints = (timeTakenSeconds: number) => {
+    if (timerDurationSeconds <= 0 || timeTakenSeconds === 0) return 0 // No timer or no time taken
+
+    // If time taken is more than max allowed, no bonus
+    if (timeTakenSeconds >= timerDurationSeconds) return 0
+
+    // Calculate bonus based on remaining time
+    const timeRatio = timeTakenSeconds / timerDurationSeconds
+    const bonus = MAX_BONUS_POINTS * (1 - timeRatio)
+    return Math.round(Math.max(0, bonus)) // Ensure bonus is not negative
+  }
+
+  const handleFinishLesson = async () => {
+    setIsSubmitting(true)
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+    }
+
+    let timeTakenSeconds = 0
+    if (timerDurationSeconds > 0 && startTimeRef.current) {
+      timeTakenSeconds = Math.round((Date.now() - startTimeRef.current) / 1000)
+    }
+
+    const bonusPoints = calculateBonusPoints(timeTakenSeconds)
+    const finalLessonScore = totalQuestionPoints + bonusPoints
+
+    const result = await submitLessonAnswer(user.id, lessonId, finalLessonScore)
+    setIsSubmitting(false)
+    if (result.success) {
+      onLessonComplete(result.user)
+    } else {
+      console.error("Failed to submit lesson:", result.message)
+      onGoBack() // Go back on error
     }
   }
 
@@ -41,23 +145,14 @@ export default function LessonPage({
     if (currentContentIndex < lessonContent.length - 1) {
       setCurrentContentIndex((prev) => prev + 1)
     } else {
-      // Lesson finished
-      setIsSubmitting(true)
-      const result = await submitLessonAnswer(user.id, lessonId, lessonScore)
-      setIsSubmitting(false)
-      if (result.success) {
-        onLessonComplete(result.user)
-      } else {
-        console.error("Failed to submit lesson:", result.message)
-        onGoBack() // Go back on error
-      }
+      await handleFinishLesson()
     }
   }
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-        <p>Loading lesson...</p>
+        <p>{t("loadingLesson")}</p>
       </div>
     )
   }
@@ -65,8 +160,8 @@ export default function LessonPage({
   if (lessonContent.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] p-4 text-center">
-        <p className="text-xl font-semibold mb-4">No content found for this lesson.</p>
-        <Button onClick={onGoBack}>Go Back to Dashboard</Button>
+        <p className="text-xl font-semibold mb-4">{t("noContent")}</p>
+        <Button onClick={onGoBack}>{t("goBackToDashboard")}</Button>
       </div>
     )
   }
@@ -79,12 +174,20 @@ export default function LessonPage({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Lesson Progress</span>
+            <span>{t("lessonProgress")}</span>
             <span className="text-sm text-muted-foreground">
               {currentContentIndex + 1} / {lessonContent.length}
             </span>
           </CardTitle>
           <Progress value={progress} className="w-full" />
+          {timerDurationSeconds > 0 && timeLeft !== null && (
+            <div className="flex items-center justify-center gap-2 mt-2 text-lg font-medium">
+              <Timer className="h-5 w-5" />
+              <span>
+                {t("timeLeft")} {timeLeft}s
+              </span>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <LessonContentRenderer
@@ -92,6 +195,7 @@ export default function LessonPage({
             onAnswerSubmit={handleAnswerSubmit}
             isLastItem={currentContentIndex === lessonContent.length - 1}
             onNextItem={handleNextItem}
+            isDevMode={isDevMode} // Pass isDevMode
           />
           {isSubmitting && <div className="mt-4 text-center text-primary">Submitting lesson...</div>}
         </CardContent>

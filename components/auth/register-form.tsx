@@ -7,43 +7,100 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { register } from "@/actions/auth"
+import { useEffect, useState } from "react"
+import { useLanguage } from "@/contexts/language-context"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function RegisterForm({
   onRegisterSuccess,
   onSwitchToLogin,
 }: { onRegisterSuccess: (user: any) => void; onSwitchToLogin: () => void }) {
   const [state, formAction, isPending] = useActionState(register, null)
+  const { t, availableLanguages, currentLanguage } = useLanguage()
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [selectedUiLanguage, setSelectedUiLanguage] = useState(currentLanguage)
 
-  // Handle successful registration
-  if (state?.success && state.user) {
-    onRegisterSuccess(state.user)
-  }
+  useEffect(() => {
+    if (state?.success && state.user) {
+      onRegisterSuccess(state.user)
+    }
+  }, [state, onRegisterSuccess])
+
+  useEffect(() => {
+    if (password && confirmPassword && password !== confirmPassword) {
+      setPasswordError(t("passwordsDoNotMatch"))
+    } else {
+      setPasswordError(null)
+    }
+  }, [password, confirmPassword, t])
+
+  // No custom handleSubmit needed, formAction will be passed directly to form's action prop.
 
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Register</CardTitle>
-        <CardDescription>Create your account to start learning!</CardDescription>
+        <CardTitle className="text-2xl">{t("registerForLangify")}</CardTitle>
+        <CardDescription>{t("createAccount")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="grid gap-4">
+          {" "}
+          {/* Changed onSubmit to action */}
           <div className="grid gap-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="username">{t("username")}</Label>
             <Input id="username" name="username" type="text" placeholder="john.doe" required />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required />
+            <Label htmlFor="password">{t("password")}</Label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="confirmPassword">{t("confirmPassword")}</Label>
+            <Input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+            {passwordError && <p className="text-sm text-red-500">{passwordError}</p>}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="ui-language-select">{t("selectYourUiLanguage")}</Label>
+            <Select value={selectedUiLanguage} onValueChange={setSelectedUiLanguage}>
+              <SelectTrigger id="ui-language-select">
+                <SelectValue placeholder={t("selectUiLanguage")} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableLanguages.map((lang) => (
+                  <SelectItem key={lang.code} value={lang.code}>
+                    {lang.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* Hidden input to pass selectedUiLanguage as part of form data */}
+            <input type="hidden" name="uiLanguage" value={selectedUiLanguage} />
           </div>
           {state?.message && <p className="text-sm text-red-500">{state.message}</p>}
-          <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? "Registering..." : "Register"}
+          <Button type="submit" className="w-full" disabled={isPending || !!passwordError}>
+            {isPending ? t("registering") : t("register")}
           </Button>
         </form>
         <div className="mt-4 text-center text-sm">
-          Already have an account?{" "}
+          {t("alreadyAccount")}{" "}
           <Button variant="link" onClick={onSwitchToLogin} className="p-0 h-auto">
-            Login
+            {t("login")}
           </Button>
         </div>
       </CardContent>
