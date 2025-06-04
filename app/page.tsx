@@ -83,7 +83,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
       <header className="fixed top-0 left-0 right-0 z-10 flex h-16 items-center justify-between px-4 md:px-6 border-b bg-card">
         <div className="flex items-center gap-2">
-          <Image src="/langify-logo.png" alt="Langify Logo" width={32} height={32} />
+          <Image src="/placeholder.svg?height=32&width=32" alt="Langify Logo" width={32} height={32} />
           <span className="text-xl font-bold">Langify</span>
         </div>
         <div className="flex items-center gap-2">

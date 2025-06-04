@@ -15,6 +15,9 @@ let lessons: {
 let lessonContent: { id: string; lesson_id: string; type: "multiple_choice" | "fill_in_blank"; data: string }[] = []
 let userProgress: { user_id: string; lesson_id: string; completed: boolean; score: number }[] = []
 
+// Flag to ensure database is seeded only once
+let isDbSeeded = false
+
 // Helper to calculate level based on points
 function calculateLevel(points: number): number {
   if (points >= 900) return 10
@@ -31,6 +34,10 @@ function calculateLevel(points: number): number {
 
 // Function to seed initial data into our in-memory database
 async function seedDatabase() {
+  if (isDbSeeded) {
+    return // Already seeded, do nothing
+  }
+
   // Users
   const hashedPassword1 = await bcrypt.hash("password123", 10)
   const hashedPassword2 = await bcrypt.hash("securepass", 10)
@@ -211,14 +218,24 @@ async function seedDatabase() {
     { user_id: "user-6", lesson_id: "lesson-2", completed: true, score: 70 },
     { user_id: "user-6", lesson_id: "lesson-3", completed: true, score: 70 },
   ]
-}
 
+  isDbSeeded = true // Mark as seeded
+}
 // Initialize the database when the module is loaded
-seedDatabase()
+// Use an IIFE (Immediately Invoked Function Expression) to call async seedDatabase
+// This ensures it runs once when the module is first imported.
+;(async () => {
+  await seedDatabase()
+})()
 
 // Simulate SQL query function for our in-memory database
 export const db = {
   async query(sql: string, params?: any[]): Promise<any[]> {
+    // Ensure database is seeded before any query
+    if (!isDbSeeded) {
+      await seedDatabase()
+    }
+
     if (sql.startsWith("SELECT * FROM users")) {
       if (sql.includes("WHERE username = ?")) {
         return users.filter((u) => u.username === params[0])
