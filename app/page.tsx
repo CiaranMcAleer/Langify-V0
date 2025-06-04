@@ -1,4 +1,3 @@
-// app/page.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -8,26 +7,26 @@ import Dashboard from "@/components/dashboard"
 import LessonPage from "@/components/lesson/lesson-page"
 import Leaderboard from "@/components/leaderboard"
 import ProfilePage from "@/components/profile-page"
+import SettingsPage from "@/components/settings-page" // Import SettingsPage
 import Image from "next/image"
-import { Moon, Sun, Settings } from "react-feather" // Import Settings icon
+import { Moon, Sun, Settings } from "react-feather"
 import { Button } from "@/components/ui/button"
 import { LanguageProvider, useLanguage } from "@/contexts/language-context"
 import Notifications from "@/components/notifications"
-import { Toaster } from "@/components/ui/toaster" // Import Toaster
+import { Toaster } from "@/components/ui/toaster"
 
 function AppContent() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [currentView, setCurrentView] = useState<
-    "login" | "register" | "dashboard" | "lesson" | "leaderboard" | "profile"
+    "login" | "register" | "dashboard" | "lesson" | "leaderboard" | "profile" | "settings" // Add 'settings'
   >("login")
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null)
-  const [activeLessonTimerDurationSeconds, setActiveLessonTimerDurationSeconds] = useState<number>(0) // Default to 0 (no timer)
-  const [theme, setTheme] = useState<string>("default") // 'default' or 'langify-modern'
-  const [isDevMode, setIsDevMode] = useState(false) // New: Dev Mode state
-  const { t } = useLanguage()
+  const [activeLessonTimerDurationSeconds, setActiveLessonTimerDurationSeconds] = useState<number>(0)
+  const [theme, setTheme] = useState<string>("default")
+  const [isDevMode, setIsDevMode] = useState(false)
+  const { t, setLanguage } = useLanguage() // Get setLanguage from context
 
   useEffect(() => {
-    // Load theme from localStorage
     const savedTheme = localStorage.getItem("langify-theme")
     if (savedTheme) {
       setTheme(savedTheme)
@@ -35,19 +34,21 @@ function AppContent() {
   }, [])
 
   useEffect(() => {
-    // Apply theme class to HTML element
     document.documentElement.className = theme === "langify-modern" ? "theme-langify-modern" : ""
     localStorage.setItem("langify-theme", theme)
   }, [theme])
 
   useEffect(() => {
-    // Set dev mode based on admin status
     if (currentUser?.isAdmin) {
       setIsDevMode(true)
     } else {
       setIsDevMode(false)
     }
-  }, [currentUser])
+    // Set UI language from user preference on login
+    if (currentUser?.ui_language) {
+      setLanguage(currentUser.ui_language)
+    }
+  }, [currentUser, setLanguage])
 
   const handleLoginSuccess = (user: any) => {
     setCurrentUser(user)
@@ -66,14 +67,14 @@ function AppContent() {
 
   const handleStartLesson = (lessonId: string, timerDurationSeconds: number) => {
     setActiveLessonId(lessonId)
-    setActiveLessonTimerDurationSeconds(timerDurationSeconds) // Set timer duration based on lesson
+    setActiveLessonTimerDurationSeconds(timerDurationSeconds)
     setCurrentView("lesson")
   }
 
   const handleLessonComplete = (updatedUser: any) => {
-    setCurrentUser(updatedUser) // Update user points/level
+    setCurrentUser(updatedUser)
     setActiveLessonId(null)
-    setActiveLessonTimerDurationSeconds(0) // Reset timer duration
+    setActiveLessonTimerDurationSeconds(0)
     setCurrentView("dashboard")
   }
 
@@ -83,6 +84,10 @@ function AppContent() {
 
   const handleShowProfile = () => {
     setCurrentView("profile")
+  }
+
+  const handleShowSettings = () => {
+    setCurrentView("settings")
   }
 
   const handleGoBackToDashboard = () => {
@@ -95,6 +100,11 @@ function AppContent() {
 
   const handleUserUpdate = (updatedUser: any) => {
     setCurrentUser(updatedUser)
+  }
+
+  const handleAccountDeleted = () => {
+    setCurrentUser(null)
+    setCurrentView("login")
   }
 
   return (
@@ -135,7 +145,8 @@ function AppContent() {
             onShowLeaderboard={handleShowLeaderboard}
             onShowProfile={handleShowProfile}
             onLogout={handleLogout}
-            isDevMode={isDevMode} // Pass isDevMode
+            isDevMode={isDevMode}
+            onShowSettings={handleShowSettings} // Pass new prop
           />
         ) : currentView === "lesson" && activeLessonId ? (
           <LessonPage
@@ -144,7 +155,7 @@ function AppContent() {
             onLessonComplete={handleLessonComplete}
             onGoBack={handleGoBackToDashboard}
             timerDurationSeconds={activeLessonTimerDurationSeconds}
-            isDevMode={isDevMode} // Pass isDevMode
+            isDevMode={isDevMode}
           />
         ) : currentView === "leaderboard" ? (
           <Leaderboard onGoBack={handleGoBackToDashboard} />
@@ -155,6 +166,13 @@ function AppContent() {
             onUserUpdate={handleUserUpdate}
             isDevMode={isDevMode}
           />
+        ) : currentView === "settings" ? (
+          <SettingsPage
+            user={currentUser}
+            onGoBack={handleGoBackToDashboard}
+            onUserUpdate={handleUserUpdate}
+            onAccountDeleted={handleAccountDeleted}
+          />
         ) : (
           // Fallback to dashboard if state is inconsistent
           <Dashboard
@@ -163,12 +181,13 @@ function AppContent() {
             onShowLeaderboard={handleShowLeaderboard}
             onShowProfile={handleShowProfile}
             onLogout={handleLogout}
-            isDevMode={isDevMode} // Pass isDevMode
+            isDevMode={isDevMode}
+            onShowSettings={handleShowSettings}
           />
         )}
       </div>
-      <Notifications /> {/* Global notifications */}
-      <Toaster /> {/* Toaster for toast notifications */}
+      <Notifications />
+      <Toaster />
     </main>
   )
 }

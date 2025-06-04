@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { getLanguages, getLessons, getUserProgress, markLessonAsCompleteDev } from "@/actions/app" // Import new action
-import { Trophy, BookOpen, User, CheckCircle, Flame } from "lucide-react"
+import { Trophy, BookOpen, User, CheckCircle, Flame } from "lucide-react" // Import Settings icon
 import Image from "next/image"
 import ThemeSwitcher from "@/components/theme-switcher"
 import { useLanguage } from "@/contexts/language-context"
@@ -19,6 +19,7 @@ export default function Dashboard({
   onShowProfile,
   onLogout,
   isDevMode, // New prop
+  onShowSettings, // New prop
 }: {
   user: any
   onStartLesson: (lessonId: string, timerDurationSeconds: number) => void
@@ -26,12 +27,13 @@ export default function Dashboard({
   onShowProfile: () => void
   onLogout: () => void
   isDevMode: boolean // New prop
+  onShowSettings: () => void // New prop
 }) {
   const [languages, setLanguages] = useState<any[]>([])
   const [selectedLanguage, setSelectedLanguage] = useState("lang-1") // Default to Italian
   const [lessons, setLessons] = useState<any[]>([])
   const [userLessonProgress, setUserLessonProgress] = useState<any>({}) // { lessonId: { completed: boolean, score: number } }
-  const { t, currentLanguage, setLanguage, availableLanguages } = useLanguage()
+  const { t } = useLanguage() // Removed currentLanguage, setLanguage, availableLanguages
   const { toast } = useToast()
 
   const fetchDashboardData = async () => {
@@ -130,57 +132,29 @@ export default function Dashboard({
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("chooseLanguage")}</CardTitle>
-            <CardDescription>{t("selectLanguage")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder={t("selectLanguage")} />
-              </SelectTrigger>
-              <SelectContent>
-                {languages.map((lang: any) => (
-                  <SelectItem key={lang.id} value={lang.id}>
-                    <div className="flex items-center gap-2">
-                      <Image
-                        src={lang.flag_url || "/placeholder.svg"}
-                        alt={`${lang.name} flag`}
-                        width={24}
-                        height={24}
-                      />
-                      {lang.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("uiLanguage")}</CardTitle>
-            <CardDescription>{t("selectUiLanguage")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Select value={currentLanguage} onValueChange={setLanguage}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder={t("selectUiLanguage")} />
-              </SelectTrigger>
-              <SelectContent>
-                {availableLanguages.map((lang) => (
-                  <SelectItem key={lang.code} value={lang.code}>
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>{t("chooseLanguage")}</CardTitle>
+          <CardDescription>{t("selectLanguage")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder={t("selectLanguage")} />
+            </SelectTrigger>
+            <SelectContent>
+              {languages.map((lang: any) => (
+                <SelectItem key={lang.id} value={lang.id}>
+                  <div className="flex items-center gap-2">
+                    <Image src={lang.flag_url || "/placeholder.svg"} alt={`${lang.name} flag`} width={24} height={24} />
                     {lang.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      </div>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
 
       <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
         {t("lessons")} (
@@ -238,12 +212,15 @@ export default function Dashboard({
         <CardHeader>
           <CardTitle>{t("actions")}</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Button onClick={onShowLeaderboard} className="w-full">
             {t("viewLeaderboard")}
           </Button>
           <Button onClick={onShowProfile} className="w-full" variant="secondary">
             {t("viewProfile")}
+          </Button>
+          <Button onClick={onShowSettings} className="w-full" variant="outline">
+            {t("settings")}
           </Button>
         </CardContent>
       </Card>

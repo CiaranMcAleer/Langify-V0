@@ -2,6 +2,7 @@
 "use server"
 
 import { db } from "./db"
+import bcrypt from "bcryptjs" // Import bcrypt for password verification
 
 export async function getLanguages() {
   return await db.query("SELECT * FROM languages")
@@ -105,6 +106,7 @@ export async function submitLessonAnswer(userId: string, lessonId: string, total
       last_lesson_completed_at: updatedUser.last_lesson_completed_at,
       current_streak: updatedUser.current_streak,
       isAdmin: updatedUser.isAdmin,
+      ui_language: updatedUser.ui_language,
     },
   }
 }
@@ -158,6 +160,7 @@ export async function addStreakDayDev(userId: string) {
         last_lesson_completed_at: updatedUser.last_lesson_completed_at,
         current_streak: updatedUser.current_streak,
         isAdmin: updatedUser.isAdmin,
+        ui_language: updatedUser.ui_language,
       },
     }
   }
@@ -185,6 +188,7 @@ export async function updateUserStatsDev(userId: string, points: number, level: 
       last_lesson_completed_at: updatedUser.last_lesson_completed_at,
       current_streak: updatedUser.current_streak,
       isAdmin: updatedUser.isAdmin,
+      ui_language: updatedUser.ui_language,
     },
   }
 }
@@ -208,6 +212,65 @@ export async function resetUserProgressDev(userId: string) {
       last_lesson_completed_at: updatedUser.last_lesson_completed_at,
       current_streak: updatedUser.current_streak,
       isAdmin: updatedUser.isAdmin,
+      ui_language: updatedUser.ui_language,
+    },
+  }
+}
+
+export async function resetUserProgress(userId: string, usernameInput: string, passwordInput: string) {
+  const users = await db.query("SELECT * FROM users WHERE id = ?", [userId])
+  const user = users[0]
+
+  if (!user) {
+    return { success: false, message: "User not found." }
+  }
+
+  if (user.username !== usernameInput) {
+    return { success: false, message: "Incorrect username." }
+  }
+
+  const passwordMatch = await bcrypt.compare(passwordInput, user.password_hash)
+  if (!passwordMatch) {
+    return { success: false, message: "Incorrect password." }
+  }
+
+  await db.query("DELETE FROM user_progress WHERE user_id = ?", [userId])
+  await db.query("DELETE FROM user_history WHERE user_id = ?", [userId])
+  // Reset user's points, level, and streak
+  await db.query(
+    "UPDATE users SET points = ?, level = ?, last_lesson_completed_at = ?, current_streak = ? WHERE id = ?",
+    [0, 1, null, 0, userId],
+  )
+  const updatedUser = (await db.query("SELECT * FROM users WHERE id = ?", [userId]))[0]
+  return {
+    success: true,
+    user: {
+      id: updatedUser.id,
+      username: updatedUser.username,
+      points: updatedUser.points,
+      level: updatedUser.level,
+      last_lesson_completed_at: updatedUser.last_lesson_completed_at,
+      current_streak: updatedUser.current_streak,
+      isAdmin: updatedUser.isAdmin,
+      ui_language: updatedUser.ui_language,
+    },
+  }
+}
+
+export async function updateUserUiLanguage(userId: string, newLanguageCode: string) {
+  await db.query("UPDATE users SET ui_language = ? WHERE id = ?", [newLanguageCode, userId])
+  const updatedUser = (await db.query("SELECT * FROM users WHERE id = ?", [userId]))[0]
+  return {
+    success: true,
+    user: {
+      id: updatedUser.id,
+      username: updatedUser.username,
+      points: updatedUser.points,
+      level: updatedUser.level,
+      last_lesson_completed_at: updatedUser.last_lesson_completed_at,
+      current_streak: updatedUser.current_streak,
+      isAdmin: updatedUser.isAdmin,
+      ui_language: updatedUser.ui_language,
     },
   }
 }

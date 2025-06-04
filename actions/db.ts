@@ -11,6 +11,7 @@ let users: {
   last_lesson_completed_at: string | null // New: for streak
   current_streak: number // New: for streak
   isAdmin: boolean // New: for admin devmode
+  ui_language: string // New: User's preferred UI language
 }[] = []
 let languages: { id: string; name: string; code: string; flag_url: string }[] = []
 let lessons: {
@@ -116,6 +117,29 @@ const uiTranslations: { [key: string]: { [key: string]: string } } = {
     progressReset: "Progress reset successfully!",
     pointsUpdated: "Points and level updated!",
     streakUpdated: "Streak updated!",
+    settings: "Settings",
+    backToProfile: "Back to Profile",
+    accountSettings: "Account Settings",
+    changePassword: "Change Password",
+    currentPassword: "Current Password",
+    newPassword: "New Password",
+    confirmNewPassword: "Confirm New Password",
+    passwordChanged: "Password changed successfully!",
+    passwordMismatch: "New passwords do not match.",
+    incorrectCurrentPassword: "Incorrect current password.",
+    deleteAccount: "Delete Account",
+    deleteAccountWarning:
+      "This action cannot be undone. This will permanently delete your account and all associated data.",
+    typeUsername: "Type your username",
+    typePassword: "Type your password",
+    confirmDelete: "I understand the consequences, delete my account.",
+    accountDeleted: "Account deleted successfully!",
+    resetAllProgress: "Reset All Progress",
+    resetProgressWarning:
+      "This will clear all your lesson progress, points, level, and streak. This action cannot be undone.",
+    confirmPassword: "Confirm Password",
+    passwordsDoNotMatch: "Passwords do not match.",
+    selectYourUiLanguage: "Select your UI language",
   },
   it: {
     welcome: "Benvenuto, {username}!",
@@ -195,6 +219,29 @@ const uiTranslations: { [key: string]: { [key: string]: string } } = {
     progressReset: "Progresso reimpostato con successo!",
     pointsUpdated: "Punti e livello aggiornati!",
     streakUpdated: "Serie aggiornata!",
+    settings: "Impostazioni",
+    backToProfile: "Torna al Profilo",
+    accountSettings: "Impostazioni Account",
+    changePassword: "Cambia Password",
+    currentPassword: "Password Attuale",
+    newPassword: "Nuova Password",
+    confirmNewPassword: "Conferma Nuova Password",
+    passwordChanged: "Password cambiata con successo!",
+    passwordMismatch: "Le nuove password non corrispondono.",
+    incorrectCurrentPassword: "Password attuale errata.",
+    deleteAccount: "Elimina Account",
+    deleteAccountWarning:
+      "Questa azione non può essere annullata. Eliminerà permanentemente il tuo account e tutti i dati associati.",
+    typeUsername: "Digita il tuo nome utente",
+    typePassword: "Digita la tua password",
+    confirmDelete: "Capisco le conseguenze, elimina il mio account.",
+    accountDeleted: "Account eliminato con successo!",
+    resetAllProgress: "Reimposta Tutti i Progressi",
+    resetProgressWarning:
+      "Questo cancellerà tutti i tuoi progressi nelle lezioni, punti, livello e serie. Questa azione non può essere annullata.",
+    confirmPassword: "Conferma Password",
+    passwordsDoNotMatch: "Le password non corrispondono.",
+    selectYourUiLanguage: "Seleziona la tua lingua UI",
   },
 }
 
@@ -240,6 +287,7 @@ async function seedDatabase() {
       last_lesson_completed_at: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(), // Completed yesterday, streak active
       current_streak: 3,
       isAdmin: false,
+      ui_language: "en",
     },
     {
       id: "user-2",
@@ -250,6 +298,7 @@ async function seedDatabase() {
       last_lesson_completed_at: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(), // Completed 2 days ago, streak lost
       current_streak: 5,
       isAdmin: false,
+      ui_language: "en",
     },
     {
       id: "user-3",
@@ -260,6 +309,7 @@ async function seedDatabase() {
       last_lesson_completed_at: null, // No recent lesson, no streak
       current_streak: 0,
       isAdmin: false,
+      ui_language: "en",
     },
     {
       id: "user-4",
@@ -270,6 +320,7 @@ async function seedDatabase() {
       last_lesson_completed_at: new Date().toISOString(), // Completed today, streak active
       current_streak: 7,
       isAdmin: false,
+      ui_language: "it", // Example: Diana prefers Italian
     },
     {
       id: "user-5",
@@ -280,6 +331,7 @@ async function seedDatabase() {
       last_lesson_completed_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // Old completion, streak lost
       current_streak: 10,
       isAdmin: false,
+      ui_language: "en",
     },
     {
       id: "user-6",
@@ -290,6 +342,7 @@ async function seedDatabase() {
       last_lesson_completed_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // Completed recently, streak active
       current_streak: 1,
       isAdmin: false,
+      ui_language: "en",
     },
     {
       id: "user-admin",
@@ -300,6 +353,7 @@ async function seedDatabase() {
       last_lesson_completed_at: null,
       current_streak: 0,
       isAdmin: true, // Admin user
+      ui_language: "en",
     },
   ]
 
@@ -671,6 +725,20 @@ export const db = {
       }
       return []
     }
+    if (sql.startsWith("UPDATE users SET password_hash = ? WHERE id = ?")) {
+      const userIndex = users.findIndex((u) => u.id === params[1])
+      if (userIndex !== -1) {
+        users[userIndex].password_hash = params[0]
+      }
+      return []
+    }
+    if (sql.startsWith("UPDATE users SET ui_language = ? WHERE id = ?")) {
+      const userIndex = users.findIndex((u) => u.id === params[1])
+      if (userIndex !== -1) {
+        users[userIndex].ui_language = params[0]
+      }
+      return []
+    }
     if (sql.startsWith("INSERT INTO users")) {
       const newUser = {
         id: `user-${users.length + 1}`,
@@ -681,9 +749,15 @@ export const db = {
         last_lesson_completed_at: null,
         current_streak: 0,
         isAdmin: false, // New users are not admins by default
+        ui_language: params[2] || "en", // Set UI language on registration
       }
       users.push(newUser)
       return [newUser]
+    }
+
+    if (sql.startsWith("DELETE FROM users WHERE id = ?")) {
+      users = users.filter((u) => u.id !== params[0])
+      return []
     }
 
     if (sql.startsWith("SELECT * FROM languages")) {
