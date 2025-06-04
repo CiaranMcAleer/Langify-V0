@@ -18,7 +18,7 @@ export default function Home() {
     "login" | "register" | "dashboard" | "lesson" | "leaderboard" | "profile"
   >("login")
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null)
-  const [activeLessonTimerEnabled, setActiveLessonTimerEnabled] = useState(false) // State for current lesson's timer setting
+  const [activeLessonTimerDurationSeconds, setActiveLessonTimerDurationSeconds] = useState<number>(0) // Default to 0 (no timer)
   const [theme, setTheme] = useState<string>("default") // 'default' or 'langify-modern'
 
   useEffect(() => {
@@ -50,16 +50,16 @@ export default function Home() {
     setCurrentView("login")
   }
 
-  const handleStartLesson = (lessonId: string, timerEnabled: boolean) => {
+  const handleStartLesson = (lessonId: string, timerDurationSeconds: number) => {
     setActiveLessonId(lessonId)
-    setActiveLessonTimerEnabled(timerEnabled) // Set timer state based on lesson
+    setActiveLessonTimerDurationSeconds(timerDurationSeconds) // Set timer duration based on lesson
     setCurrentView("lesson")
   }
 
   const handleLessonComplete = (updatedUser: any) => {
     setCurrentUser(updatedUser) // Update user points/level
     setActiveLessonId(null)
-    setActiveLessonTimerEnabled(false) // Reset timer state
+    setActiveLessonTimerDurationSeconds(0) // Reset timer duration
     setCurrentView("dashboard")
   }
 
@@ -119,7 +119,7 @@ export default function Home() {
             lessonId={activeLessonId}
             onLessonComplete={handleLessonComplete}
             onGoBack={handleGoBackToDashboard}
-            lessonTimerEnabled={activeLessonTimerEnabled} // Pass the lesson-specific timer setting
+            timerDurationSeconds={activeLessonTimerDurationSeconds} // Pass the lesson-specific timer duration
           />
         ) : currentView === "leaderboard" ? (
           <Leaderboard onGoBack={handleGoBackToDashboard} />

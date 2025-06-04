@@ -18,7 +18,7 @@ export default function Dashboard({
   onLogout,
 }: {
   user: any
-  onStartLesson: (lessonId: string, timerEnabled: boolean) => void
+  onStartLesson: (lessonId: string, timerDurationSeconds: number) => void // Updated prop
   onShowLeaderboard: () => void
   onShowProfile: () => void
   onLogout: () => void
@@ -142,7 +142,7 @@ export default function Dashboard({
             <Card
               key={lesson.id}
               className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => onStartLesson(lesson.id, lesson.timer_enabled)}
+              onClick={() => onStartLesson(lesson.id, lesson.timer_duration_seconds)} // Pass timer_duration_seconds
             >
               <CardHeader>
                 <CardTitle className="flex items-center justify-between gap-2">

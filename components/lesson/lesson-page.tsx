@@ -28,13 +28,13 @@ export default function LessonPage({
   lessonId,
   onLessonComplete,
   onGoBack,
-  lessonTimerEnabled, // This prop now comes from the lesson data
+  timerDurationSeconds, // This prop now defines the timer duration
 }: {
   user: any
   lessonId: string
   onLessonComplete: (updatedUser: any) => void
   onGoBack: () => void
-  lessonTimerEnabled: boolean // This prop now comes from the lesson data
+  timerDurationSeconds: number // This prop now defines the timer duration
 }) {
   const [lessonContent, setLessonContent] = useState<LessonContentItem[]>([])
   const [currentContentIndex, setCurrentContentIndex] = useState(0)
@@ -46,7 +46,6 @@ export default function LessonPage({
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const startTimeRef = useRef<number | null>(null)
 
-  const MAX_LESSON_TIME_SECONDS = 120 // 2 minutes for the whole lesson
   const MAX_BONUS_POINTS = 100 // Max bonus points for completing fast
 
   useEffect(() => {
@@ -58,8 +57,8 @@ export default function LessonPage({
       setCorrectAnswersCount(0)
       setTotalQuestionPoints(0)
 
-      if (lessonTimerEnabled) {
-        setTimeLeft(MAX_LESSON_TIME_SECONDS)
+      if (timerDurationSeconds > 0) {
+        setTimeLeft(timerDurationSeconds)
         startTimeRef.current = Date.now()
       } else {
         setTimeLeft(null)
@@ -73,10 +72,11 @@ export default function LessonPage({
         clearInterval(timerRef.current)
       }
     }
-  }, [lessonId, lessonTimerEnabled])
+  }, [lessonId, timerDurationSeconds])
 
   useEffect(() => {
-    if (lessonTimerEnabled && timeLeft !== null && timeLeft > 0 && !isLoading && !isSubmitting) {
+    // Only run timer if timerDurationSeconds is positive and timeLeft is not null
+    if (timerDurationSeconds > 0 && timeLeft !== null && timeLeft > 0 && !isLoading && !isSubmitting) {
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => (prev !== null ? prev - 1 : null))
       }, 1000)
@@ -90,7 +90,7 @@ export default function LessonPage({
         clearInterval(timerRef.current)
       }
     }
-  }, [timeLeft, lessonTimerEnabled, isLoading, isSubmitting])
+  }, [timeLeft, timerDurationSeconds, isLoading, isSubmitting])
 
   const handleAnswerSubmit = (isCorrect: boolean) => {
     if (isCorrect) {
@@ -101,13 +101,13 @@ export default function LessonPage({
   }
 
   const calculateBonusPoints = (timeTakenSeconds: number) => {
-    if (!lessonTimerEnabled || timeTakenSeconds === 0) return 0
+    if (timerDurationSeconds <= 0 || timeTakenSeconds === 0) return 0 // No timer or no time taken
 
     // If time taken is more than max allowed, no bonus
-    if (timeTakenSeconds >= MAX_LESSON_TIME_SECONDS) return 0
+    if (timeTakenSeconds >= timerDurationSeconds) return 0
 
     // Calculate bonus based on remaining time
-    const timeRatio = timeTakenSeconds / MAX_LESSON_TIME_SECONDS
+    const timeRatio = timeTakenSeconds / timerDurationSeconds
     const bonus = MAX_BONUS_POINTS * (1 - timeRatio)
     return Math.round(Math.max(0, bonus)) // Ensure bonus is not negative
   }
@@ -119,7 +119,7 @@ export default function LessonPage({
     }
 
     let timeTakenSeconds = 0
-    if (lessonTimerEnabled && startTimeRef.current) {
+    if (timerDurationSeconds > 0 && startTimeRef.current) {
       timeTakenSeconds = Math.round((Date.now() - startTimeRef.current) / 1000)
     }
 
@@ -175,7 +175,7 @@ export default function LessonPage({
             </span>
           </CardTitle>
           <Progress value={progress} className="w-full" />
-          {lessonTimerEnabled && timeLeft !== null && (
+          {timerDurationSeconds > 0 && timeLeft !== null && (
             <div className="flex items-center justify-center gap-2 mt-2 text-lg font-medium">
               <Timer className="h-5 w-5" />
               <span>Time Left: {timeLeft}s</span>

@@ -10,7 +10,8 @@ let lessons: {
   title: string
   description: string
   order: number
-  timer_enabled: boolean
+  timer_enabled: boolean // Still keep this for clarity, but timer_duration_seconds > 0 implies enabled
+  timer_duration_seconds: number // New field
 }[] = []
 let lessonContent: { id: string; lesson_id: string; type: "multiple_choice" | "fill_in_blank"; data: string }[] = []
 let userProgress: { user_id: string; lesson_id: string; completed: boolean; score: number }[] = []
@@ -62,7 +63,7 @@ async function seedDatabase() {
     { id: "lang-3", name: "French", code: "fr", flag_url: "https://flagsapi.com/FR/flat/64.png" },
   ]
 
-  // Lessons (Italian) with timer_enabled
+  // Lessons (Italian) with timer_enabled and timer_duration_seconds
   lessons = [
     {
       id: "lesson-1",
@@ -70,7 +71,8 @@ async function seedDatabase() {
       title: "Basic Greetings",
       description: "Learn how to say hello and goodbye.",
       order: 1,
-      timer_enabled: true, // Timer enabled for this lesson
+      timer_enabled: true,
+      timer_duration_seconds: 60, // 60 seconds for this lesson
     },
     {
       id: "lesson-2",
@@ -78,7 +80,8 @@ async function seedDatabase() {
       title: "Common Phrases",
       description: "Everyday expressions for travelers.",
       order: 2,
-      timer_enabled: false, // Timer disabled for this lesson
+      timer_enabled: false,
+      timer_duration_seconds: 0, // No timer for this lesson
     },
     {
       id: "lesson-3",
@@ -86,7 +89,8 @@ async function seedDatabase() {
       title: "Numbers 1-10",
       description: "Count from one to ten in Italian.",
       order: 3,
-      timer_enabled: true, // Timer enabled for this lesson
+      timer_enabled: true,
+      timer_duration_seconds: 90, // 90 seconds for this lesson
     },
   ]
 
