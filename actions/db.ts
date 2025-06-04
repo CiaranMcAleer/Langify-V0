@@ -4,7 +4,14 @@ import bcrypt from "bcryptjs"
 // In-memory "database"
 let users: { id: string; username: string; password_hash: string; points: number; level: number }[] = []
 let languages: { id: string; name: string; code: string; flag_url: string }[] = []
-let lessons: { id: string; language_id: string; title: string; description: string; order: number }[] = []
+let lessons: {
+  id: string
+  language_id: string
+  title: string
+  description: string
+  order: number
+  timer_enabled: boolean
+}[] = []
 let lessonContent: { id: string; lesson_id: string; type: "multiple_choice" | "fill_in_blank"; data: string }[] = []
 let userProgress: { user_id: string; lesson_id: string; completed: boolean; score: number }[] = []
 
@@ -29,12 +36,16 @@ async function seedDatabase() {
   const hashedPassword2 = await bcrypt.hash("securepass", 10)
   const hashedPassword3 = await bcrypt.hash("testpass", 10)
   const hashedPassword4 = await bcrypt.hash("dianapass", 10)
+  const hashedPassword5 = await bcrypt.hash("evapass", 10)
+  const hashedPassword6 = await bcrypt.hash("frankpass", 10)
 
   users = [
     { id: "user-1", username: "alice", password_hash: hashedPassword1, points: 180, level: calculateLevel(180) }, // Level 2
     { id: "user-2", username: "bob", password_hash: hashedPassword2, points: 350, level: calculateLevel(350) }, // Level 4
     { id: "user-3", username: "charlie", password_hash: hashedPassword3, points: 70, level: calculateLevel(70) }, // Level 1
     { id: "user-4", username: "diana", password_hash: hashedPassword4, points: 520, level: calculateLevel(520) }, // Level 6
+    { id: "user-5", username: "eva", password_hash: hashedPassword5, points: 810, level: calculateLevel(810) }, // Level 9
+    { id: "user-6", username: "frank", password_hash: hashedPassword6, points: 950, level: calculateLevel(950) }, // Level 10
   ]
 
   // Languages with flags
@@ -44,7 +55,7 @@ async function seedDatabase() {
     { id: "lang-3", name: "French", code: "fr", flag_url: "https://flagsapi.com/FR/flat/64.png" },
   ]
 
-  // Lessons (Italian)
+  // Lessons (Italian) with timer_enabled
   lessons = [
     {
       id: "lesson-1",
@@ -52,6 +63,7 @@ async function seedDatabase() {
       title: "Basic Greetings",
       description: "Learn how to say hello and goodbye.",
       order: 1,
+      timer_enabled: true, // Timer enabled for this lesson
     },
     {
       id: "lesson-2",
@@ -59,6 +71,7 @@ async function seedDatabase() {
       title: "Common Phrases",
       description: "Everyday expressions for travelers.",
       order: 2,
+      timer_enabled: false, // Timer disabled for this lesson
     },
     {
       id: "lesson-3",
@@ -66,6 +79,7 @@ async function seedDatabase() {
       title: "Numbers 1-10",
       description: "Count from one to ten in Italian.",
       order: 3,
+      timer_enabled: true, // Timer enabled for this lesson
     },
   ]
 
@@ -187,6 +201,15 @@ async function seedDatabase() {
     { user_id: "user-2", lesson_id: "lesson-1", completed: true, score: 70 },
     { user_id: "user-2", lesson_id: "lesson-2", completed: true, score: 60 },
     { user_id: "user-3", lesson_id: "lesson-1", completed: false, score: 0 },
+    { user_id: "user-4", lesson_id: "lesson-1", completed: true, score: 70 },
+    { user_id: "user-4", lesson_id: "lesson-2", completed: true, score: 70 },
+    { user_id: "user-4", lesson_id: "lesson-3", completed: true, score: 70 },
+    { user_id: "user-5", lesson_id: "lesson-1", completed: true, score: 70 },
+    { user_id: "user-5", lesson_id: "lesson-2", completed: true, score: 70 },
+    { user_id: "user-5", lesson_id: "lesson-3", completed: true, score: 70 },
+    { user_id: "user-6", lesson_id: "lesson-1", completed: true, score: 70 },
+    { user_id: "user-6", lesson_id: "lesson-2", completed: true, score: 70 },
+    { user_id: "user-6", lesson_id: "lesson-3", completed: true, score: 70 },
   ]
 }
 
@@ -257,9 +280,10 @@ export const db = {
     }
     if (sql.startsWith("SELECT * FROM user_progress")) {
       if (sql.includes("WHERE user_id = ? AND language_id = ?")) {
-        // This is a custom query for dashboard progress
-        const languageLessons = lessons.filter((l) => l.language_id === params[1]).map((l) => l.id)
-        return userProgress.filter((p) => p.user_id === params[0] && languageLessons.includes(p.lesson_id))
+        const userId = params[0]
+        const languageId = params[1]
+        const lessonIdsInLanguage = lessons.filter((l) => l.language_id === languageId).map((l) => l.id)
+        return userProgress.filter((p) => p.user_id === userId && lessonIdsInLanguage.includes(p.lesson_id))
       }
       if (sql.includes("WHERE user_id = ? AND lesson_id = ?")) {
         return userProgress.filter((p) => p.user_id === params[0] && p.lesson_id === params[1])

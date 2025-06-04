@@ -27,26 +27,26 @@
     --radius: 0.5rem;
   }
 
-  /* Langify Modern Theme */
+  /* Langify Modern Theme (Darker Navy) */
   .theme-langify-modern {
-    --background: 240 10% 3.9%; /* Dark background */
+    --background: 218 28% 13%; /* Darker Navy background */
     --foreground: 0 0% 98%; /* Light text */
-    --card: 240 10% 3.9%;
+    --card: 218 28% 13%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 218 28% 13%;
     --popover-foreground: 0 0% 98%;
     --primary: 262 83% 58%; /* Vibrant purple */
     --primary-foreground: 0 0% 98%;
-    --secondary: 240 5% 10%; /* Slightly lighter dark */
+    --secondary: 218 20% 20%; /* Slightly lighter dark navy */
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 5% 10%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 5% 10%;
+    --muted: 218 20% 20%;
+    --muted-foreground: 218 10% 60%;
+    --accent: 218 20% 20%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    --border: 218 15% 25%;
+    --input: 218 15% 25%;
     --ring: 262 83% 58%;
   }
 }

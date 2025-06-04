@@ -9,8 +9,8 @@ import LessonPage from "@/components/lesson/lesson-page"
 import Leaderboard from "@/components/leaderboard"
 import ProfilePage from "@/components/profile-page"
 import Image from "next/image"
-import { Moon, Sun } from "react-feather" // Import Moon and Sun components
-import { Button } from "@/components/ui/button" // Import Button component
+import { Moon, Sun } from "react-feather"
+import { Button } from "@/components/ui/button"
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<any>(null)
@@ -18,7 +18,7 @@ export default function Home() {
     "login" | "register" | "dashboard" | "lesson" | "leaderboard" | "profile"
   >("login")
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null)
-  const [lessonTimerEnabled, setLessonTimerEnabled] = useState(true) // Default to timer enabled
+  const [activeLessonTimerEnabled, setActiveLessonTimerEnabled] = useState(false) // State for current lesson's timer setting
   const [theme, setTheme] = useState<string>("default") // 'default' or 'langify-modern'
 
   useEffect(() => {
@@ -50,14 +50,16 @@ export default function Home() {
     setCurrentView("login")
   }
 
-  const handleStartLesson = (lessonId: string) => {
+  const handleStartLesson = (lessonId: string, timerEnabled: boolean) => {
     setActiveLessonId(lessonId)
+    setActiveLessonTimerEnabled(timerEnabled) // Set timer state based on lesson
     setCurrentView("lesson")
   }
 
   const handleLessonComplete = (updatedUser: any) => {
     setCurrentUser(updatedUser) // Update user points/level
     setActiveLessonId(null)
+    setActiveLessonTimerEnabled(false) // Reset timer state
     setCurrentView("dashboard")
   }
 
@@ -71,10 +73,6 @@ export default function Home() {
 
   const handleGoBackToDashboard = () => {
     setCurrentView("dashboard")
-  }
-
-  const handleToggleLessonTimer = () => {
-    setLessonTimerEnabled((prev) => !prev)
   }
 
   const handleToggleTheme = () => {
@@ -114,8 +112,6 @@ export default function Home() {
             onShowLeaderboard={handleShowLeaderboard}
             onShowProfile={handleShowProfile}
             onLogout={handleLogout}
-            lessonTimerEnabled={lessonTimerEnabled}
-            onToggleLessonTimer={handleToggleLessonTimer}
           />
         ) : currentView === "lesson" && activeLessonId ? (
           <LessonPage
@@ -123,7 +119,7 @@ export default function Home() {
             lessonId={activeLessonId}
             onLessonComplete={handleLessonComplete}
             onGoBack={handleGoBackToDashboard}
-            lessonTimerEnabled={lessonTimerEnabled}
+            lessonTimerEnabled={activeLessonTimerEnabled} // Pass the lesson-specific timer setting
           />
         ) : currentView === "leaderboard" ? (
           <Leaderboard onGoBack={handleGoBackToDashboard} />
@@ -137,8 +133,6 @@ export default function Home() {
             onShowLeaderboard={handleShowLeaderboard}
             onShowProfile={handleShowProfile}
             onLogout={handleLogout}
-            lessonTimerEnabled={lessonTimerEnabled}
-            onToggleLessonTimer={handleToggleLessonTimer}
           />
         )}
       </div>

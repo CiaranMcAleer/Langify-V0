@@ -8,9 +8,7 @@ import { Button } from "@/components/ui/button"
 import { getLanguages, getLessons, getUserProgress } from "@/actions/app"
 import { Trophy, BookOpen, User, CheckCircle } from "lucide-react"
 import Image from "next/image"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import ThemeSwitcher from "@/components/theme-switcher" // Declare the ThemeSwitcher variable
+import ThemeSwitcher from "@/components/theme-switcher"
 
 export default function Dashboard({
   user,
@@ -18,16 +16,12 @@ export default function Dashboard({
   onShowLeaderboard,
   onShowProfile,
   onLogout,
-  lessonTimerEnabled,
-  onToggleLessonTimer,
 }: {
   user: any
-  onStartLesson: (lessonId: string) => void
+  onStartLesson: (lessonId: string, timerEnabled: boolean) => void
   onShowLeaderboard: () => void
   onShowProfile: () => void
   onLogout: () => void
-  lessonTimerEnabled: boolean
-  onToggleLessonTimer: () => void
 }) {
   const [languages, setLanguages] = useState<any[]>([])
   const [selectedLanguage, setSelectedLanguage] = useState("lang-1") // Default to Italian
@@ -125,10 +119,6 @@ export default function Dashboard({
               ))}
             </SelectContent>
           </Select>
-          <div className="flex items-center space-x-2 ml-auto">
-            <Switch id="lesson-timer" checked={lessonTimerEnabled} onCheckedChange={onToggleLessonTimer} />
-            <Label htmlFor="lesson-timer">Lesson Timer</Label>
-          </div>
         </CardContent>
       </Card>
 
@@ -152,7 +142,7 @@ export default function Dashboard({
             <Card
               key={lesson.id}
               className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => onStartLesson(lesson.id)}
+              onClick={() => onStartLesson(lesson.id, lesson.timer_enabled)}
             >
               <CardHeader>
                 <CardTitle className="flex items-center justify-between gap-2">

@@ -28,13 +28,13 @@ export default function LessonPage({
   lessonId,
   onLessonComplete,
   onGoBack,
-  lessonTimerEnabled,
+  lessonTimerEnabled, // This prop now comes from the lesson data
 }: {
   user: any
   lessonId: string
   onLessonComplete: (updatedUser: any) => void
   onGoBack: () => void
-  lessonTimerEnabled: boolean
+  lessonTimerEnabled: boolean // This prop now comes from the lesson data
 }) {
   const [lessonContent, setLessonContent] = useState<LessonContentItem[]>([])
   const [currentContentIndex, setCurrentContentIndex] = useState(0)
