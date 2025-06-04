@@ -12,6 +12,7 @@ interface MultipleChoiceData {
   question: string
   options: string[]
   correct_answer: string
+  points_awarded: number
 }
 
 interface FillInBlankData {
@@ -19,6 +20,7 @@ interface FillInBlankData {
   blank_placeholder: string
   sentence_after: string
   correct_answer: string
+  points_awarded: number
 }
 
 interface LessonContentItem {

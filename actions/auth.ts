@@ -25,8 +25,6 @@ export async function login(prevState: any, formData: FormData) {
     return { success: false, message: "Invalid username or password." }
   }
 
-  // In a real app, you'd set a session cookie here.
-  // For this simulation, we return the user data.
   return { success: true, user: { id: user.id, username: user.username, points: user.points, level: user.level } }
 }
 
@@ -48,7 +46,7 @@ export async function register(prevState: any, formData: FormData) {
     username,
     hashedPassword,
   ])
-  const newUser = newUserResult[0] // Our simulated db returns the new user object
+  const newUser = newUserResult[0]
 
   return {
     success: true,

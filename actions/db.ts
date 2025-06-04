@@ -2,34 +2,46 @@
 import bcrypt from "bcryptjs"
 
 // In-memory "database"
-// In a real application, this would be replaced by a connection to a persistent SQL database.
-// For Next.js, we simulate it with arrays.
 let users: { id: string; username: string; password_hash: string; points: number; level: number }[] = []
-let languages: { id: string; name: string; code: string }[] = []
+let languages: { id: string; name: string; code: string; flag_url: string }[] = []
 let lessons: { id: string; language_id: string; title: string; description: string; order: number }[] = []
 let lessonContent: { id: string; lesson_id: string; type: "multiple_choice" | "fill_in_blank"; data: string }[] = []
 let userProgress: { user_id: string; lesson_id: string; completed: boolean; score: number }[] = []
 
+// Helper to calculate level based on points
+function calculateLevel(points: number): number {
+  if (points >= 900) return 10
+  if (points >= 800) return 9
+  if (points >= 700) return 8
+  if (points >= 600) return 7
+  if (points >= 500) return 6
+  if (points >= 400) return 5
+  if (points >= 300) return 4
+  if (points >= 200) return 3
+  if (points >= 100) return 2
+  return 1
+}
+
 // Function to seed initial data into our in-memory database
 async function seedDatabase() {
   // Users
-  //These are hardcoded test user accounts but this will be removed at a leter point
-  //TODO remember to remove these
   const hashedPassword1 = await bcrypt.hash("password123", 10)
   const hashedPassword2 = await bcrypt.hash("securepass", 10)
   const hashedPassword3 = await bcrypt.hash("testpass", 10)
+  const hashedPassword4 = await bcrypt.hash("dianapass", 10)
 
   users = [
-    { id: "user-1", username: "alice", password_hash: hashedPassword1, points: 150, level: 2 },
-    { id: "user-2", username: "bob", password_hash: hashedPassword2, points: 200, level: 3 },
-    { id: "user-3", username: "charlie", password_hash: hashedPassword3, points: 80, level: 1 },
+    { id: "user-1", username: "alice", password_hash: hashedPassword1, points: 180, level: calculateLevel(180) }, // Level 2
+    { id: "user-2", username: "bob", password_hash: hashedPassword2, points: 350, level: calculateLevel(350) }, // Level 4
+    { id: "user-3", username: "charlie", password_hash: hashedPassword3, points: 70, level: calculateLevel(70) }, // Level 1
+    { id: "user-4", username: "diana", password_hash: hashedPassword4, points: 520, level: calculateLevel(520) }, // Level 6
   ]
 
-  // Languages
+  // Languages with flags
   languages = [
-    { id: "lang-1", name: "Italian", code: "it" },
-    { id: "lang-2", name: "Spanish", code: "es" },
-    { id: "lang-3", name: "French", code: "fr" },
+    { id: "lang-1", name: "Italian", code: "it", flag_url: "https://flagsapi.com/IT/flat/64.png" },
+    { id: "lang-2", name: "Spanish", code: "es", flag_url: "https://flagsapi.com/ES/flat/64.png" },
+    { id: "lang-3", name: "French", code: "fr", flag_url: "https://flagsapi.com/FR/flat/64.png" },
   ]
 
   // Lessons (Italian)
@@ -57,9 +69,9 @@ async function seedDatabase() {
     },
   ]
 
-  // Lesson Content for Italian lessons
+  // Lesson Content for Italian lessons with points_awarded
   lessonContent = [
-    // Lesson 1: Basic Greetings
+    // Lesson 1: Basic Greetings (Max 20+20+30 = 70 points from questions)
     {
       id: "content-1-1",
       lesson_id: "lesson-1",
@@ -68,6 +80,7 @@ async function seedDatabase() {
         question: "What does 'Ciao' mean?",
         options: ["Hello", "Goodbye", "Thank you", "Please"],
         correct_answer: "Hello",
+        points_awarded: 20,
       }),
     },
     {
@@ -78,6 +91,7 @@ async function seedDatabase() {
         question: "How do you say 'Good morning'?",
         options: ["Buonanotte", "Buonasera", "Buongiorno", "Arrivederci"],
         correct_answer: "Buongiorno",
+        points_awarded: 20,
       }),
     },
     {
@@ -89,10 +103,11 @@ async function seedDatabase() {
         blank_placeholder: "...",
         sentence_after: ".",
         correct_answer: "bene",
+        points_awarded: 30,
       }),
     },
 
-    // Lesson 2: Common Phrases
+    // Lesson 2: Common Phrases (Max 20+30+20 = 70 points from questions)
     {
       id: "content-2-1",
       lesson_id: "lesson-2",
@@ -101,6 +116,7 @@ async function seedDatabase() {
         question: "What does 'Grazie' mean?",
         options: ["Please", "Thank you", "Excuse me", "Sorry"],
         correct_answer: "Thank you",
+        points_awarded: 20,
       }),
     },
     {
@@ -112,6 +128,7 @@ async function seedDatabase() {
         blank_placeholder: "...",
         sentence_after: ".",
         correct_answer: "un caffè",
+        points_awarded: 30,
       }),
     },
     {
@@ -122,10 +139,11 @@ async function seedDatabase() {
         question: "How do you say 'Excuse me'?",
         options: ["Scusa", "Prego", "Mi dispiace", "Permesso"],
         correct_answer: "Scusa",
+        points_awarded: 20,
       }),
     },
 
-    // Lesson 3: Numbers 1-10
+    // Lesson 3: Numbers 1-10 (Max 20+30+20 = 70 points from questions)
     {
       id: "content-3-1",
       lesson_id: "lesson-3",
@@ -134,6 +152,7 @@ async function seedDatabase() {
         question: "What is 'due'?",
         options: ["One", "Two", "Three", "Four"],
         correct_answer: "Two",
+        points_awarded: 20,
       }),
     },
     {
@@ -145,6 +164,7 @@ async function seedDatabase() {
         blank_placeholder: "...",
         sentence_after: ".",
         correct_answer: "sette",
+        points_awarded: 30,
       }),
     },
     {
@@ -155,16 +175,17 @@ async function seedDatabase() {
         question: "What is 'dieci'?",
         options: ["Eight", "Nine", "Ten", "Eleven"],
         correct_answer: "Ten",
+        points_awarded: 20,
       }),
     },
   ]
 
   // User Progress (initial, can be empty or pre-filled for testing)
   userProgress = [
-    { user_id: "user-1", lesson_id: "lesson-1", completed: true, score: 30 },
+    { user_id: "user-1", lesson_id: "lesson-1", completed: true, score: 70 }, // Alice completed lesson 1
     { user_id: "user-1", lesson_id: "lesson-2", completed: false, score: 0 },
-    { user_id: "user-2", lesson_id: "lesson-1", completed: true, score: 30 },
-    { user_id: "user-2", lesson_id: "lesson-2", completed: true, score: 25 },
+    { user_id: "user-2", lesson_id: "lesson-1", completed: true, score: 70 },
+    { user_id: "user-2", lesson_id: "lesson-2", completed: true, score: 60 },
     { user_id: "user-3", lesson_id: "lesson-1", completed: false, score: 0 },
   ]
 }
@@ -175,9 +196,6 @@ seedDatabase()
 // Simulate SQL query function for our in-memory database
 export const db = {
   async query(sql: string, params?: any[]): Promise<any[]> {
-    // This is a very simplified simulation of SQL queries on in-memory arrays.
-    // In a real application, this would connect to a database like PostgreSQL, MySQL, etc.
-
     if (sql.startsWith("SELECT * FROM users")) {
       if (sql.includes("WHERE username = ?")) {
         return users.filter((u) => u.username === params[0])
@@ -220,11 +238,7 @@ export const db = {
       const userIndex = users.findIndex((u) => u.id === params[1])
       if (userIndex !== -1) {
         users[userIndex].points = params[0]
-        // Simple level up logic based on points
-        if (users[userIndex].points >= 100 && users[userIndex].level < 2) users[userIndex].level = 2
-        if (users[userIndex].points >= 200 && users[userIndex].level < 3) users[userIndex].level = 3
-        if (users[userIndex].points >= 300 && users[userIndex].level < 4) users[userIndex].level = 4
-        if (users[userIndex].points >= 400 && users[userIndex].level < 5) users[userIndex].level = 5
+        users[userIndex].level = calculateLevel(users[userIndex].points) // Update level based on new points
       }
       return []
     }
@@ -242,6 +256,11 @@ export const db = {
       return []
     }
     if (sql.startsWith("SELECT * FROM user_progress")) {
+      if (sql.includes("WHERE user_id = ? AND language_id = ?")) {
+        // This is a custom query for dashboard progress
+        const languageLessons = lessons.filter((l) => l.language_id === params[1]).map((l) => l.id)
+        return userProgress.filter((p) => p.user_id === params[0] && languageLessons.includes(p.lesson_id))
+      }
       if (sql.includes("WHERE user_id = ? AND lesson_id = ?")) {
         return userProgress.filter((p) => p.user_id === params[0] && p.lesson_id === params[1])
       }

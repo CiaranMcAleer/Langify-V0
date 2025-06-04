@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { login } from "@/actions/auth"
+import { useEffect } from "react"
 
 export default function LoginForm({
   onLoginSuccess,
@@ -14,15 +15,16 @@ export default function LoginForm({
 }: { onLoginSuccess: (user: any) => void; onSwitchToRegister: () => void }) {
   const [state, formAction, isPending] = useActionState(login, null)
 
-  // Handle successful login
-  if (state?.success && state.user) {
-    onLoginSuccess(state.user)
-  }
+  useEffect(() => {
+    if (state?.success && state.user) {
+      onLoginSuccess(state.user)
+    }
+  }, [state, onLoginSuccess])
 
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Login</CardTitle>
+        <CardTitle className="text-2xl">Login to Langify</CardTitle>
         <CardDescription>Enter your username and password to access your account.</CardDescription>
       </CardHeader>
       <CardContent>

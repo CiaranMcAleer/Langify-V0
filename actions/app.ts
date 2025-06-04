@@ -19,12 +19,12 @@ export async function getLessonContent(lessonId: string) {
   }))
 }
 
-export async function submitLessonAnswer(userId: string, lessonId: string, score: number) {
+export async function submitLessonAnswer(userId: string, lessonId: string, totalLessonScore: number) {
   // Update user's points
   const users = await db.query("SELECT * FROM users WHERE id = ?", [userId])
   const currentUser = users[0]
   if (currentUser) {
-    const newPoints = currentUser.points + score
+    const newPoints = currentUser.points + totalLessonScore
     await db.query("UPDATE users SET points = ? WHERE id = ?", [newPoints, userId])
   }
 
@@ -36,7 +36,7 @@ export async function submitLessonAnswer(userId: string, lessonId: string, score
   if (existingProgress.length > 0) {
     await db.query("UPDATE user_progress SET completed = ?, score = ? WHERE user_id = ? AND lesson_id = ?", [
       true,
-      score,
+      totalLessonScore,
       userId,
       lessonId,
     ])
@@ -45,7 +45,7 @@ export async function submitLessonAnswer(userId: string, lessonId: string, score
       userId,
       lessonId,
       true,
-      score,
+      totalLessonScore,
     ])
   }
 
@@ -59,4 +59,8 @@ export async function submitLessonAnswer(userId: string, lessonId: string, score
 
 export async function getLeaderboard() {
   return await db.query("SELECT id, username, points, level FROM users ORDER BY points DESC")
+}
+
+export async function getUserProgress(userId: string, languageId: string) {
+  return await db.query("SELECT * FROM user_progress WHERE user_id = ? AND language_id = ?", [userId, languageId])
 }

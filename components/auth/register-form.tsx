@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { register } from "@/actions/auth"
+import { useEffect } from "react"
 
 export default function RegisterForm({
   onRegisterSuccess,
@@ -14,15 +15,16 @@ export default function RegisterForm({
 }: { onRegisterSuccess: (user: any) => void; onSwitchToLogin: () => void }) {
   const [state, formAction, isPending] = useActionState(register, null)
 
-  // Handle successful registration
-  if (state?.success && state.user) {
-    onRegisterSuccess(state.user)
-  }
+  useEffect(() => {
+    if (state?.success && state.user) {
+      onRegisterSuccess(state.user)
+    }
+  }, [state, onRegisterSuccess])
 
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Register</CardTitle>
+        <CardTitle className="text-2xl">Register for Langify</CardTitle>
         <CardDescription>Create your account to start learning!</CardDescription>
       </CardHeader>
       <CardContent>
