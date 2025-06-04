@@ -10,7 +10,7 @@ import Leaderboard from "@/components/leaderboard"
 import ProfilePage from "@/components/profile-page"
 import Image from "next/image"
 import { Moon, Sun } from "react-feather" // Import Moon and Sun components
-import Button from "@/components/ui/button" // Import Button component
+import { Button } from "@/components/ui/button" // Import Button component
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<any>(null)
