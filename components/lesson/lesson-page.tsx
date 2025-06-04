@@ -8,10 +8,11 @@ import { Progress } from "@/components/ui/progress"
 import { getLessonContent, submitLessonAnswer } from "@/actions/app"
 import LessonContentRenderer from "./lesson-content-renderer"
 import { Timer } from "lucide-react"
+import { useLanguage } from "@/contexts/language-context"
 
 interface LessonContentItem {
   id: string
-  type: "multiple_choice" | "fill_in_blank"
+  type: "multiple_choice" | "fill_in_blank" | "audio_multiple_choice_translation" | "audio_multiple_choice_text"
   data: {
     question?: string
     options?: string[]
@@ -19,7 +20,8 @@ interface LessonContentItem {
     sentence_before?: string
     blank_placeholder?: string
     sentence_after?: string
-    points_awarded: number // Added points_awarded
+    points_awarded: number
+    audio_url?: string
   }
 }
 
@@ -28,13 +30,13 @@ export default function LessonPage({
   lessonId,
   onLessonComplete,
   onGoBack,
-  timerDurationSeconds, // This prop now defines the timer duration
+  timerDurationSeconds,
 }: {
   user: any
   lessonId: string
   onLessonComplete: (updatedUser: any) => void
   onGoBack: () => void
-  timerDurationSeconds: number // This prop now defines the timer duration
+  timerDurationSeconds: number
 }) {
   const [lessonContent, setLessonContent] = useState<LessonContentItem[]>([])
   const [currentContentIndex, setCurrentContentIndex] = useState(0)
@@ -45,6 +47,7 @@ export default function LessonPage({
   const [timeLeft, setTimeLeft] = useState<number | null>(null) // Time in seconds
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const startTimeRef = useRef<number | null>(null)
+  const { t } = useLanguage()
 
   const MAX_BONUS_POINTS = 100 // Max bonus points for completing fast
 
@@ -147,7 +150,7 @@ export default function LessonPage({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-        <p>Loading lesson...</p>
+        <p>{t("loadingLesson")}</p>
       </div>
     )
   }
@@ -155,8 +158,8 @@ export default function LessonPage({
   if (lessonContent.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] p-4 text-center">
-        <p className="text-xl font-semibold mb-4">No content found for this lesson.</p>
-        <Button onClick={onGoBack}>Go Back to Dashboard</Button>
+        <p className="text-xl font-semibold mb-4">{t("noContent")}</p>
+        <Button onClick={onGoBack}>{t("goBackToDashboard")}</Button>
       </div>
     )
   }
@@ -169,7 +172,7 @@ export default function LessonPage({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Lesson Progress</span>
+            <span>{t("lessonProgress")}</span>
             <span className="text-sm text-muted-foreground">
               {currentContentIndex + 1} / {lessonContent.length}
             </span>
@@ -178,7 +181,9 @@ export default function LessonPage({
           {timerDurationSeconds > 0 && timeLeft !== null && (
             <div className="flex items-center justify-center gap-2 mt-2 text-lg font-medium">
               <Timer className="h-5 w-5" />
-              <span>Time Left: {timeLeft}s</span>
+              <span>
+                {t("timeLeft")} {timeLeft}s
+              </span>
             </div>
           )}
         </CardHeader>

@@ -20,12 +20,56 @@ export async function getLessonContent(lessonId: string) {
 }
 
 export async function submitLessonAnswer(userId: string, lessonId: string, totalLessonScore: number) {
-  // Update user's points
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  // Update user's points and streak
   const users = await db.query("SELECT * FROM users WHERE id = ?", [userId])
   const currentUser = users[0]
+  let newStreak = currentUser.current_streak
+  let lastCompletedAt = currentUser.last_lesson_completed_at
+
   if (currentUser) {
     const newPoints = currentUser.points + totalLessonScore
-    await db.query("UPDATE users SET points = ? WHERE id = ?", [newPoints, userId])
+    const newLevel = calculateLevel(newPoints)
+
+    if (lastCompletedAt) {
+      const lastCompletionDate = new Date(lastCompletedAt)
+      const lastCompletionDay = new Date(
+        lastCompletionDate.getFullYear(),
+        lastCompletionDate.getMonth(),
+        lastCompletionDate.getDate(),
+      )
+
+      const diffTime = Math.abs(today.getTime() - lastCompletionDay.getTime())
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+      if (diffDays === 1) {
+        // Completed yesterday, increment streak
+        newStreak += 1
+      } else if (diffDays > 1) {
+        // Missed a day, reset streak
+        newStreak = 1
+      }
+      // If diffDays is 0 (completed today), streak remains the same
+    } else {
+      // First lesson completed, start streak
+      newStreak = 1
+    }
+    lastCompletedAt = now.toISOString() // Update last completion time to now
+
+    await db.query(
+      "UPDATE users SET points = ?, level = ?, last_lesson_completed_at = ?, current_streak = ? WHERE id = ?",
+      [newPoints, newLevel, lastCompletedAt, newStreak, userId],
+    )
+
+    // Record history
+    await db.query("INSERT INTO user_history (user_id, timestamp, points, level) VALUES (?, ?, ?, ?)", [
+      userId,
+      now.toISOString(),
+      newPoints,
+      newLevel,
+    ])
   }
 
   // Update user progress for the lesson
@@ -53,7 +97,14 @@ export async function submitLessonAnswer(userId: string, lessonId: string, total
   const updatedUser = (await db.query("SELECT * FROM users WHERE id = ?", [userId]))[0]
   return {
     success: true,
-    user: { id: updatedUser.id, username: updatedUser.username, points: updatedUser.points, level: updatedUser.level },
+    user: {
+      id: updatedUser.id,
+      username: updatedUser.username,
+      points: updatedUser.points,
+      level: updatedUser.level,
+      last_lesson_completed_at: updatedUser.last_lesson_completed_at,
+      current_streak: updatedUser.current_streak,
+    },
   }
 }
 
@@ -63,4 +114,31 @@ export async function getLeaderboard() {
 
 export async function getUserProgress(userId: string, languageId: string) {
   return await db.query("SELECT * FROM user_progress WHERE user_id = ? AND language_id = ?", [userId, languageId])
+}
+
+export async function getUserHistory(userId: string) {
+  return await db.query("SELECT * FROM user_history WHERE user_id = ? ORDER BY timestamp ASC", [userId])
+}
+
+export async function getNotifications() {
+  return await db.query("SELECT * FROM notifications")
+}
+
+export async function getUiTranslations() {
+  const result = await db.query("SELECT * FROM ui_translations")
+  return result[0] || {} // Return the translation object
+}
+
+// Helper function for level calculation (copied from db.ts to be available in server action context)
+function calculateLevel(points: number): number {
+  if (points >= 900) return 10
+  if (points >= 800) return 9
+  if (points >= 700) return 8
+  if (points >= 600) return 7
+  if (points >= 500) return 6
+  if (points >= 400) return 5
+  if (points >= 300) return 4
+  if (points >= 200) return 3
+  if (points >= 100) return 2
+  return 1
 }

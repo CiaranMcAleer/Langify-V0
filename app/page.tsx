@@ -11,8 +11,10 @@ import ProfilePage from "@/components/profile-page"
 import Image from "next/image"
 import { Moon, Sun } from "react-feather"
 import { Button } from "@/components/ui/button"
+import { LanguageProvider, useLanguage } from "@/contexts/language-context" // Import LanguageProvider and useLanguage
+import Notifications from "@/components/notifications" // Import Notifications
 
-export default function Home() {
+function AppContent() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [currentView, setCurrentView] = useState<
     "login" | "register" | "dashboard" | "lesson" | "leaderboard" | "profile"
@@ -20,6 +22,7 @@ export default function Home() {
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null)
   const [activeLessonTimerDurationSeconds, setActiveLessonTimerDurationSeconds] = useState<number>(0) // Default to 0 (no timer)
   const [theme, setTheme] = useState<string>("default") // 'default' or 'langify-modern'
+  const { t } = useLanguage() // Use the translation hook
 
   useEffect(() => {
     // Load theme from localStorage
@@ -93,7 +96,7 @@ export default function Home() {
           </button>
           {currentUser && (
             <Button onClick={handleLogout} variant="outline" size="sm">
-              Logout
+              {t("logout")}
             </Button>
           )}
         </div>
@@ -136,6 +139,15 @@ export default function Home() {
           />
         )}
       </div>
+      <Notifications /> {/* Global notifications */}
     </main>
+  )
+}
+
+export default function Home() {
+  return (
+    <LanguageProvider>
+      <AppContent />
+    </LanguageProvider>
   )
 }

@@ -2,7 +2,15 @@
 import bcrypt from "bcryptjs"
 
 // In-memory "database"
-let users: { id: string; username: string; password_hash: string; points: number; level: number }[] = []
+let users: {
+  id: string
+  username: string
+  password_hash: string
+  points: number
+  level: number
+  last_lesson_completed_at: string | null // New: for streak
+  current_streak: number // New: for streak
+}[] = []
 let languages: { id: string; name: string; code: string; flag_url: string }[] = []
 let lessons: {
   id: string
@@ -10,11 +18,156 @@ let lessons: {
   title: string
   description: string
   order: number
-  timer_enabled: boolean // Still keep this for clarity, but timer_duration_seconds > 0 implies enabled
-  timer_duration_seconds: number // New field
+  timer_enabled: boolean
+  timer_duration_seconds: number
 }[] = []
-let lessonContent: { id: string; lesson_id: string; type: "multiple_choice" | "fill_in_blank"; data: string }[] = []
+let lessonContent: {
+  id: string
+  lesson_id: string
+  type:
+    | "multiple_choice"
+    | "fill_in_blank"
+    | "audio_multiple_choice_translation" // New type
+    | "audio_multiple_choice_text" // New type
+  data: string
+}[] = []
 let userProgress: { user_id: string; lesson_id: string; completed: boolean; score: number }[] = []
+let userHistory: { user_id: string; timestamp: string; points: number; level: number }[] = [] // New: for profile graph
+let notifications: { id: string; message: string; type: "info" | "warning" | "event"; created_at: string }[] = [] // New: for notifications
+
+// UI Translations
+const uiTranslations: { [key: string]: { [key: string]: string } } = {
+  en: {
+    welcome: "Welcome, {username}!",
+    totalPoints: "Total Points",
+    currentLevel: "Current Level",
+    earnMorePoints: "Earn more points by completing lessons!",
+    keepLearning: "Keep learning to level up!",
+    actions: "Actions",
+    viewLeaderboard: "View Leaderboard",
+    viewProfile: "View Profile",
+    chooseLanguage: "Choose a Language",
+    selectLanguage: "Select a language",
+    lessons: "Lessons",
+    completed: "Completed",
+    startLesson: "Start Lesson",
+    loginToLangify: "Login to Langify",
+    enterCredentials: "Enter your username and password to access your account.",
+    username: "Username",
+    password: "Password",
+    loggingIn: "Logging in...",
+    login: "Login",
+    noAccount: "Don't have an account?",
+    register: "Register",
+    registerForLangify: "Register for Langify",
+    createAccount: "Create your account to start learning!",
+    registering: "Registering...",
+    alreadyAccount: "Already have an account?",
+    lessonProgress: "Lesson Progress",
+    timeLeft: "Time Left:",
+    checkAnswer: "Check Answer",
+    next: "Next",
+    finishLesson: "Finish Lesson",
+    correct: "Correct!",
+    incorrect: "Incorrect.",
+    loadingLesson: "Loading lesson...",
+    noContent: "No content found for this lesson.",
+    goBackToDashboard: "Go Back to Dashboard",
+    leaderboard: "Leaderboard",
+    topLearners: "Top Learners",
+    rank: "Rank",
+    points: "Points",
+    level: "Level",
+    noUsersLeaderboard: "No users on the leaderboard yet.",
+    backToDashboard: "Back to Dashboard",
+    myProfile: "My Profile",
+    userDetails: "User Details",
+    totalPointsProfile: "Total Points",
+    currentLevelProfile: "Current Level",
+    pointsToNextLevel: "Points to Next Level",
+    maxLevelAchieved: "Max Level Achieved!",
+    highestLevel: "You are at the highest level. Keep earning points!",
+    logout: "Logout",
+    completeSentence: "Complete the sentence:",
+    streak: "Streak",
+    days: "days",
+    activeStreak: "Your streak is active!",
+    streakReminder: "Complete a lesson today to keep your streak!",
+    streakLost: "Your streak was lost. Start a new one!",
+    language: "Language",
+    uiLanguage: "UI Language",
+    selectUiLanguage: "Select UI Language",
+    eventNotification: "Event Notification",
+    infoNotification: "Info Notification",
+    warningNotification: "Warning Notification",
+    dismiss: "Dismiss",
+  },
+  it: {
+    welcome: "Benvenuto, {username}!",
+    totalPoints: "Punti Totali",
+    currentLevel: "Livello Attuale",
+    earnMorePoints: "Guadagna più punti completando le lezioni!",
+    keepLearning: "Continua a imparare per salire di livello!",
+    actions: "Azioni",
+    viewLeaderboard: "Visualizza Classifica",
+    viewProfile: "Visualizza Profilo",
+    chooseLanguage: "Scegli una Lingua",
+    selectLanguage: "Seleziona una lingua",
+    lessons: "Lezioni",
+    completed: "Completato",
+    startLesson: "Inizia Lezione",
+    loginToLangify: "Accedi a Langify",
+    enterCredentials: "Inserisci nome utente e password per accedere al tuo account.",
+    username: "Nome Utente",
+    password: "Password",
+    loggingIn: "Accesso in corso...",
+    login: "Accedi",
+    noAccount: "Non hai un account?",
+    register: "Registrati",
+    registerForLangify: "Registrati a Langify",
+    createAccount: "Crea il tuo account per iniziare a imparare!",
+    registering: "Registrazione in corso...",
+    alreadyAccount: "Hai già un account?",
+    lessonProgress: "Progresso Lezione",
+    timeLeft: "Tempo Rimanente:",
+    checkAnswer: "Verifica Risposta",
+    next: "Avanti",
+    finishLesson: "Termina Lezione",
+    correct: "Corretto!",
+    incorrect: "Sbagliato.",
+    loadingLesson: "Caricamento lezione...",
+    noContent: "Nessun contenuto trovato per questa lezione.",
+    goBackToDashboard: "Torna alla Dashboard",
+    leaderboard: "Classifica",
+    topLearners: "Migliori Studenti",
+    rank: "Posizione",
+    points: "Punti",
+    level: "Livello",
+    noUsersLeaderboard: "Nessun utente in classifica.",
+    backToDashboard: "Torna alla Dashboard",
+    myProfile: "Il Mio Profilo",
+    userDetails: "Dettagli Utente",
+    totalPointsProfile: "Punti Totali",
+    currentLevelProfile: "Livello Attuale",
+    pointsToNextLevel: "Punti per il Prossimo Livello",
+    maxLevelAchieved: "Livello Massimo Raggiunto!",
+    highestLevel: "Sei al livello più alto. Continua a guadagnare punti!",
+    logout: "Esci",
+    completeSentence: "Completa la frase:",
+    streak: "Serie",
+    days: "giorni",
+    activeStreak: "La tua serie è attiva!",
+    streakReminder: "Completa una lezione oggi per mantenere la tua serie!",
+    streakLost: "La tua serie è stata persa. Iniziane una nuova!",
+    language: "Lingua",
+    uiLanguage: "Lingua UI",
+    selectUiLanguage: "Seleziona Lingua UI",
+    eventNotification: "Notifica Evento",
+    infoNotification: "Notifica Informativa",
+    warningNotification: "Notifica di Avviso",
+    dismiss: "Ignora",
+  },
+}
 
 // Flag to ensure database is seeded only once
 let isDbSeeded = false
@@ -48,12 +201,60 @@ async function seedDatabase() {
   const hashedPassword6 = await bcrypt.hash("frankpass", 10)
 
   users = [
-    { id: "user-1", username: "alice", password_hash: hashedPassword1, points: 180, level: calculateLevel(180) }, // Level 2
-    { id: "user-2", username: "bob", password_hash: hashedPassword2, points: 350, level: calculateLevel(350) }, // Level 4
-    { id: "user-3", username: "charlie", password_hash: hashedPassword3, points: 70, level: calculateLevel(70) }, // Level 1
-    { id: "user-4", username: "diana", password_hash: hashedPassword4, points: 520, level: calculateLevel(520) }, // Level 6
-    { id: "user-5", username: "eva", password_hash: hashedPassword5, points: 810, level: calculateLevel(810) }, // Level 9
-    { id: "user-6", username: "frank", password_hash: hashedPassword6, points: 950, level: calculateLevel(950) }, // Level 10
+    {
+      id: "user-1",
+      username: "alice",
+      password_hash: hashedPassword1,
+      points: 180,
+      level: calculateLevel(180),
+      last_lesson_completed_at: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(), // Completed yesterday, streak active
+      current_streak: 3,
+    },
+    {
+      id: "user-2",
+      username: "bob",
+      password_hash: hashedPassword2,
+      points: 350,
+      level: calculateLevel(350),
+      last_lesson_completed_at: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(), // Completed 2 days ago, streak lost
+      current_streak: 5,
+    },
+    {
+      id: "user-3",
+      username: "charlie",
+      password_hash: hashedPassword3,
+      points: 70,
+      level: calculateLevel(70),
+      last_lesson_completed_at: null, // No recent lesson, no streak
+      current_streak: 0,
+    },
+    {
+      id: "user-4",
+      username: "diana",
+      password_hash: hashedPassword4,
+      points: 520,
+      level: calculateLevel(520),
+      last_lesson_completed_at: new Date().toISOString(), // Completed today, streak active
+      current_streak: 7,
+    },
+    {
+      id: "user-5",
+      username: "eva",
+      password_hash: hashedPassword5,
+      points: 810,
+      level: calculateLevel(810),
+      last_lesson_completed_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // Old completion, streak lost
+      current_streak: 10,
+    },
+    {
+      id: "user-6",
+      username: "frank",
+      password_hash: hashedPassword6,
+      points: 950,
+      level: calculateLevel(950),
+      last_lesson_completed_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // Completed recently, streak active
+      current_streak: 1,
+    },
   ]
 
   // Languages with flags
@@ -91,6 +292,24 @@ async function seedDatabase() {
       order: 3,
       timer_enabled: true,
       timer_duration_seconds: 90, // 90 seconds for this lesson
+    },
+    {
+      id: "lesson-4",
+      language_id: "lang-1",
+      title: "Audio: Common Words",
+      description: "Listen and identify common Italian words.",
+      order: 4,
+      timer_enabled: true,
+      timer_duration_seconds: 75,
+    },
+    {
+      id: "lesson-5",
+      language_id: "lang-1",
+      title: "Audio: Translate Phrases",
+      description: "Listen to Italian phrases and select the English translation.",
+      order: 5,
+      timer_enabled: false,
+      timer_duration_seconds: 0,
     },
   ]
 
@@ -203,6 +422,56 @@ async function seedDatabase() {
         points_awarded: 20,
       }),
     },
+    // Lesson 4: Audio: Common Words (Max 25+25 = 50 points)
+    {
+      id: "content-4-1",
+      lesson_id: "lesson-4",
+      type: "audio_multiple_choice_text",
+      data: JSON.stringify({
+        audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", // Placeholder audio
+        question: "What word do you hear?",
+        options: ["Casa", "Acqua", "Pane", "Libro"],
+        correct_answer: "Casa",
+        points_awarded: 25,
+      }),
+    },
+    {
+      id: "content-4-2",
+      lesson_id: "lesson-4",
+      type: "audio_multiple_choice_text",
+      data: JSON.stringify({
+        audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", // Placeholder audio
+        question: "What word do you hear?",
+        options: ["Gatto", "Cane", "Uccello", "Pesce"],
+        correct_answer: "Cane",
+        points_awarded: 25,
+      }),
+    },
+    // Lesson 5: Audio: Translate Phrases (Max 30+30 = 60 points)
+    {
+      id: "content-5-1",
+      lesson_id: "lesson-5",
+      type: "audio_multiple_choice_translation",
+      data: JSON.stringify({
+        audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3", // Placeholder audio
+        question: "Listen and select the correct English translation:",
+        options: ["How are you?", "What is your name?", "Where are you from?", "I am fine."],
+        correct_answer: "How are you?",
+        points_awarded: 30,
+      }),
+    },
+    {
+      id: "content-5-2",
+      lesson_id: "lesson-5",
+      type: "audio_multiple_choice_translation",
+      data: JSON.stringify({
+        audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3", // Placeholder audio
+        question: "Listen and select the correct English translation:",
+        options: ["Thank you very much.", "You're welcome.", "Please help me.", "I don't understand."],
+        correct_answer: "Thank you very much.",
+        points_awarded: 30,
+      }),
+    },
   ]
 
   // User Progress (initial, can be empty or pre-filled for testing)
@@ -221,6 +490,80 @@ async function seedDatabase() {
     { user_id: "user-6", lesson_id: "lesson-1", completed: true, score: 70 },
     { user_id: "user-6", lesson_id: "lesson-2", completed: true, score: 70 },
     { user_id: "user-6", lesson_id: "lesson-3", completed: true, score: 70 },
+  ]
+
+  // User History (initial data for graph)
+  userHistory = [
+    {
+      user_id: "user-1",
+      timestamp: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      points: 0,
+      level: 1,
+    },
+    {
+      user_id: "user-1",
+      timestamp: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+      points: 50,
+      level: 1,
+    },
+    {
+      user_id: "user-1",
+      timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+      points: 120,
+      level: 2,
+    },
+    {
+      user_id: "user-1",
+      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      points: 180,
+      level: 2,
+    },
+    {
+      user_id: "user-2",
+      timestamp: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
+      points: 0,
+      level: 1,
+    },
+    {
+      user_id: "user-2",
+      timestamp: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+      points: 150,
+      level: 2,
+    },
+    {
+      user_id: "user-2",
+      timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+      points: 280,
+      level: 3,
+    },
+    {
+      user_id: "user-2",
+      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      points: 350,
+      level: 4,
+    },
+  ]
+
+  // Notifications
+  notifications = [
+    {
+      id: "notif-1",
+      message: "New Italian lessons available! Check out 'Audio: Common Words'.",
+      type: "event",
+      created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "notif-2",
+      message: "Welcome to Langify! Start your first lesson today.",
+      type: "info",
+      created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "notif-3",
+      message: "Server maintenance scheduled for tomorrow at 2 AM UTC.",
+      type: "warning",
+      created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    },
   ]
 
   isDbSeeded = true // Mark as seeded
@@ -244,11 +587,42 @@ export const db = {
       if (sql.includes("WHERE username = ?")) {
         return users.filter((u) => u.username === params[0])
       }
+      if (sql.includes("WHERE id = ?")) {
+        return users.filter((u) => u.id === params[0])
+      }
       if (sql.includes("ORDER BY points DESC")) {
         return [...users].sort((a, b) => b.points - a.points)
       }
       return users
     }
+    if (
+      sql.startsWith(
+        "UPDATE users SET points = ?, level = ?, last_lesson_completed_at = ?, current_streak = ? WHERE id = ?",
+      )
+    ) {
+      const userIndex = users.findIndex((u) => u.id === params[4])
+      if (userIndex !== -1) {
+        users[userIndex].points = params[0]
+        users[userIndex].level = params[1]
+        users[userIndex].last_lesson_completed_at = params[2]
+        users[userIndex].current_streak = params[3]
+      }
+      return []
+    }
+    if (sql.startsWith("INSERT INTO users")) {
+      const newUser = {
+        id: `user-${users.length + 1}`,
+        username: params[0],
+        password_hash: params[1],
+        points: 0,
+        level: 1,
+        last_lesson_completed_at: null,
+        current_streak: 0,
+      }
+      users.push(newUser)
+      return [newUser]
+    }
+
     if (sql.startsWith("SELECT * FROM languages")) {
       return languages
     }
@@ -266,25 +640,6 @@ export const db = {
         return lessonContent.filter((lc) => lc.lesson_id === params[0])
       }
       return lessonContent
-    }
-    if (sql.startsWith("INSERT INTO users")) {
-      const newUser = {
-        id: `user-${users.length + 1}`,
-        username: params[0],
-        password_hash: params[1],
-        points: 0,
-        level: 1,
-      }
-      users.push(newUser)
-      return [newUser]
-    }
-    if (sql.startsWith("UPDATE users SET points = ? WHERE id = ?")) {
-      const userIndex = users.findIndex((u) => u.id === params[1])
-      if (userIndex !== -1) {
-        users[userIndex].points = params[0]
-        users[userIndex].level = calculateLevel(users[userIndex].points) // Update level based on new points
-      }
-      return []
     }
     if (sql.startsWith("INSERT INTO user_progress")) {
       const newProgress = { user_id: params[0], lesson_id: params[1], completed: params[2], score: params[3] }
@@ -310,6 +665,22 @@ export const db = {
         return userProgress.filter((p) => p.user_id === params[0] && p.lesson_id === params[1])
       }
       return userProgress
+    }
+    if (sql.startsWith("INSERT INTO user_history")) {
+      const newHistoryEntry = { user_id: params[0], timestamp: params[1], points: params[2], level: params[3] }
+      userHistory.push(newHistoryEntry)
+      return [newHistoryEntry]
+    }
+    if (sql.startsWith("SELECT * FROM user_history WHERE user_id = ? ORDER BY timestamp ASC")) {
+      return userHistory
+        .filter((h) => h.user_id === params[0])
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    }
+    if (sql.startsWith("SELECT * FROM notifications")) {
+      return notifications.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    }
+    if (sql.startsWith("SELECT * FROM ui_translations")) {
+      return [uiTranslations] // Return the whole object
     }
 
     return []

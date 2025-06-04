@@ -7,10 +7,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { getLeaderboard } from "@/actions/app"
 import { Trophy } from "lucide-react"
+import { useLanguage } from "@/contexts/language-context"
 
 export default function Leaderboard({ onGoBack }: { onGoBack: () => void }) {
   const [leaderboardData, setLeaderboardData] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { t } = useLanguage()
 
   useEffect(() => {
     async function fetchData() {
@@ -25,7 +27,7 @@ export default function Leaderboard({ onGoBack }: { onGoBack: () => void }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-64px)]">
-        <p>Loading leaderboard...</p>
+        <p>{t("loadingLeaderboard")}</p>
       </div>
     )
   }
@@ -35,32 +37,32 @@ export default function Leaderboard({ onGoBack }: { onGoBack: () => void }) {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Trophy className="h-7 w-7" />
-          Leaderboard
+          {t("leaderboard")}
         </h1>
         <Button onClick={onGoBack} variant="outline">
-          Back to Dashboard
+          {t("backToDashboard")}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Top Learners</CardTitle>
+          <CardTitle>{t("topLearners")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[80px]">Rank</TableHead>
-                <TableHead>Username</TableHead>
-                <TableHead className="text-right">Points</TableHead>
-                <TableHead className="text-right">Level</TableHead>
+                <TableHead className="w-[80px]">{t("rank")}</TableHead>
+                <TableHead>{t("username")}</TableHead>
+                <TableHead className="text-right">{t("points")}</TableHead>
+                <TableHead className="text-right">{t("level")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {leaderboardData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center">
-                    No users on the leaderboard yet.
+                    {t("noUsersLeaderboard")}
                   </TableCell>
                 </TableRow>
               ) : (
