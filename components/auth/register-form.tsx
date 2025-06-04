@@ -1,8 +1,6 @@
 // components/auth/register-form.tsx
 "use client"
 
-import type React from "react"
-
 import { useActionState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,16 +36,7 @@ export default function RegisterForm({
     }
   }, [password, confirmPassword, t])
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (password !== confirmPassword) {
-      setPasswordError(t("passwordsDoNotMatch"))
-      return
-    }
-    const formData = new FormData(event.currentTarget)
-    formData.append("uiLanguage", selectedUiLanguage) // Append selected UI language
-    formAction(formData)
-  }
+  // No custom handleSubmit needed, formAction will be passed directly to form's action prop.
 
   return (
     <Card className="w-full max-w-md mx-auto">
@@ -56,7 +45,9 @@ export default function RegisterForm({
         <CardDescription>{t("createAccount")}</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="grid gap-4">
+        <form action={formAction} className="grid gap-4">
+          {" "}
+          {/* Changed onSubmit to action */}
           <div className="grid gap-2">
             <Label htmlFor="username">{t("username")}</Label>
             <Input id="username" name="username" type="text" placeholder="john.doe" required />
@@ -98,6 +89,8 @@ export default function RegisterForm({
                 ))}
               </SelectContent>
             </Select>
+            {/* Hidden input to pass selectedUiLanguage as part of form data */}
+            <input type="hidden" name="uiLanguage" value={selectedUiLanguage} />
           </div>
           {state?.message && <p className="text-sm text-red-500">{state.message}</p>}
           <Button type="submit" className="w-full" disabled={isPending || !!passwordError}>
